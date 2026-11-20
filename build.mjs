@@ -737,6 +737,7 @@ write('llms.txt', `# ${BRAND} (canholumi.com)\n\n> Danh sách căn hộ cho thu�
 write('manifest.webmanifest', JSON.stringify({ name: 'Căn Hộ Lumi – Cho thuê căn hộ Lumi Hà Nội', short_name: 'Căn Hộ Lumi', start_url: '/', display: 'standalone', background_color: '#0f2b33', theme_color: '#0f2b33', lang: 'vi', icons: [192, 512].map(s => ({ src: `/img/icon-${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
 if (INDEXNOW_KEY) write(`${INDEXNOW_KEY}.txt`, INDEXNOW_KEY);
 write('data/archive.json', JSON.stringify({ updatedAt: NOW.toISOString(), units: [...cur, ...gone] }));
+write('data/id-url.json', JSON.stringify(Object.fromEntries(all.map(x => [String(x.id).toLowerCase(), x.url]))));
 write('data/urls.txt', urls.map(x => SITE + x.u).join('\n') + '\n');
 fs.writeFileSync(path.join(OUT, 'CNAME'), 'canholumi.com\n');
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
