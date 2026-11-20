@@ -1,0 +1,50 @@
+000.jpg <- 183AD18D-BF60-48DD-8963-7AB031531142.png 1448x1086
+001.jpg <- 1AC8690E-3845-4023-A3CF-FD1907CE6849.png 1448x1086
+002.jpg <- 1BE18DC9-1AE8-4CDA-AD9A-F85664894F61.png 1086x1448
+003.jpg <- 1FA92796-54C0-4239-9EC7-32B1099FA18F.png 1448x1086
+004.jpg <- 2085569A-453B-4AA3-BE76-2E562399BDE4.png 1448x1086
+005.jpg <- 252BFA08-152F-4D28-A76A-CBCED26FB6C5.png 1086x1448
+006.jpg <- 291A42D0-9B23-4675-9832-B7A105BFE433.png 1448x1086
+007.jpg <- 40C45F64-BE11-46CE-9B23-411197D24B29.png 1448x1086
+008.jpg <- 5400CEF7-ABCB-4E83-BAEC-DA70F4E6CACC.png 1086x1448
+009.jpg <- 5C5B2667-148C-4EF6-B610-4A5B38004B77.png 1448x1086
+010.jpg <- 5DE2535F-4672-45B4-B18A-A7F3CF911490.png 1448x1086
+011.jpg <- 62D35892-F95A-4046-BE51-118F6329E0D0.png 1086x1448
+012.jpg <- 817045B2-6615-439C-A81D-DDAC3D9851E0.png 1448x1086
+013.jpg <- 8C67DC7D-6E2B-4B4D-B4BD-95644836B473.png 1448x1086
+014.jpg <- 93E3F566-4892-4BC1-93B5-D1A9E34F45BB.png 1086x1448
+015.jpg <- C6E31484-E53C-4CEA-B78E-F1EDBDC3DFE3.png 1448x1086
+016.jpg <- CA177F18-EFC2-4E9E-8FF2-DA3042082A85.png 1086x1448
+017.jpg <- CAD6FDB8-2EB7-433F-BAA4-C5282D67C7CF.png 1448x1086
+018.jpg <- D4CBAE49-A4EE-4E8E-A0BC-F02B2270E849.png 1448x1086
+019.jpg <- EDCDC676-2FA9-4BE5-8E98-86BC90622F8B.png 1086x1448
+  0%|          | 0.00/4.09M [00:00<?, ?B/s]100%|██████████| 4.09M/4.09M [00:00<00:00, 80.0MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=1R_5648F0MfzUahJCjHlduQZ6LaF7M2Iv
+To: /home/runner/work/canholumi/canholumi/raw/8C67DC7D-6E2B-4B4D-B4BD-95644836B473.png
+  0%|          | 0.00/4.31M [00:00<?, ?B/s] 97%|█████████▋| 4.19M/4.31M [00:00<00:00, 21.2MB/s]100%|██████████| 4.31M/4.31M [00:00<00:00, 21.7MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=1SK9uzO3OXI6SmTHOP4sEJ0KjyOw0aVeK
+To: /home/runner/work/canholumi/canholumi/raw/93E3F566-4892-4BC1-93B5-D1A9E34F45BB.png
+  0%|          | 0.00/4.28M [00:00<?, ?B/s] 49%|████▉     | 2.10M/4.28M [00:00<00:00, 20.2MB/s] 98%|█████████▊| 4.19M/4.28M [00:00<00:00, 14.5MB/s]100%|██████████| 4.28M/4.28M [00:00<00:00, 15.4MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=1Yvgu6_TYYqUOw1ZtdEqKXwtAMrglrf76
+To: /home/runner/work/canholumi/canholumi/raw/C6E31484-E53C-4CEA-B78E-F1EDBDC3DFE3.png
+  0%|          | 0.00/4.17M [00:00<?, ?B/s]100%|██████████| 4.17M/4.17M [00:00<00:00, 88.0MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=11KKI3M7zLN7IkJE5_tNjFiyAe6XAmLj3
+To: /home/runner/work/canholumi/canholumi/raw/CA177F18-EFC2-4E9E-8FF2-DA3042082A85.png
+  0%|          | 0.00/3.60M [00:00<?, ?B/s] 58%|█████▊    | 2.10M/3.60M [00:00<00:00, 19.9MB/s]100%|██████████| 3.60M/3.60M [00:00<00:00, 12.9MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=1th-H74vN1SqQzjMgjgUowlQJURWNuPhO
+To: /home/runner/work/canholumi/canholumi/raw/CAD6FDB8-2EB7-433F-BAA4-C5282D67C7CF.png
+  0%|          | 0.00/3.77M [00:00<?, ?B/s]100%|██████████| 3.77M/3.77M [00:00<00:00, 59.6MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=1Cssa6krvi5E5fFajveJL-ZChuH-FIMoA
+To: /home/runner/work/canholumi/canholumi/raw/D4CBAE49-A4EE-4E8E-A0BC-F02B2270E849.png
+  0%|          | 0.00/4.30M [00:00<?, ?B/s] 24%|██▍       | 1.05M/4.30M [00:00<00:00, 8.94MB/s]100%|██████████| 4.30M/4.30M [00:00<00:00, 25.6MB/s]
+Downloading...
+From: https://drive.google.com/uc?id=13xQEPg0aIyyAlOcOmsjE367ZJjrAvT0u
+To: /home/runner/work/canholumi/canholumi/raw/EDCDC676-2FA9-4BE5-8E98-86BC90622F8B.png
+  0%|          | 0.00/3.36M [00:00<?, ?B/s]100%|██████████| 3.36M/3.36M [00:00<00:00, 78.0MB/s]
+Download completed
