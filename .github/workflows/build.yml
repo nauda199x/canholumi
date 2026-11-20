@@ -1,0 +1,31 @@
+name: build-deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '7 * * * *'   # mỗi giờ: đồng bộ quỹ căn từ bảng hàng
+permissions:
+  contents: write
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build từ bảng hàng
+        run: node build.mjs
+      - name: Đẩy lên nhánh gh-pages
+        run: |
+          cd dist
+          git init -q -b gh-pages
+          git config user.name "canholumi-bot"
+          git config user.email "bot@canholumi.com"
+          git add -A
+          git commit -qm "Deploy $(date -u +%FT%TZ)"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
