@@ -166,3 +166,10 @@ p{margin:0 0 1em}
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+/* Đồng bộ trực tiếp */
+.newtag{position:absolute;top:.55rem;left:.55rem;background:var(--lamp);color:var(--ink);font-size:.78rem;font-weight:800;padding:.15em .6em;border-radius:999px}
+.price.changed,.u-price.changed{animation:flash 1.6s ease-out}
+@keyframes flash{0%{background:#ffe6a8}100%{background:transparent}}
+.u-gone{background:#fff3d6;border:1px solid var(--lamp);border-radius:var(--r-s);padding:.7rem .9rem;font-weight:600;margin:0 0 .8rem}
+#dyn-unit .u-info{position:static}

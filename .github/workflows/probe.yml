@@ -10,9 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          mkdir -p probe
-          { echo "== API GET with Origin"; curl -sS -D - -o /dev/null -H "Origin: https://canholumi.com" "https://lumihanoi.pages.dev/api/listings"; 
-            echo "== API OPTIONS"; curl -sS -D - -o /dev/null -X OPTIONS -H "Origin: https://canholumi.com" -H "Access-Control-Request-Method: GET" "https://lumihanoi.pages.dev/api/listings";
-            echo "== gviz"; curl -sS -D - -o /dev/null "https://docs.google.com/spreadsheets/d/1Buw_vjB_2x8KExje34lqmJKEFzCUM79LOmcvCVWw-yQ/gviz/tq?tqx=out:json&gid=676176071"; } > probe/out.txt 2>&1
+          mkdir -p probe; : > probe/out.txt
+          for a in 0 O; do for b in l I; do
+            id="AKfycby3MH-JDq8BfuGvnbaRmEX${a}9ddytHLgE4EeosHJsL8474NZqGX6a5scJi-HBz_${b}YE1pkQ"
+            code=$(curl -s -L -o /tmp/b -w '%{http_code}' -H "Origin: https://canholumi.com" -D /tmp/h "https://script.google.com/macros/s/$id/exec")
+            echo "$a$b $code $(grep -i '^access-control-allow-origin' /tmp/h | tail -1 | tr -d '\r') $(head -c 160 /tmp/b | tr '\n' ' ')" >> probe/out.txt
+          done; done
           git config user.name bot; git config user.email bot@canholumi.com
           git add probe; git commit -m probe; git push

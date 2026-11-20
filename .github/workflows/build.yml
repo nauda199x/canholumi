@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '7 * * * *'   # mỗi giờ: đồng bộ quỹ căn từ bảng hàng
+    - cron: '*/15 * * * *'   # dựng lại trang tĩnh (SEO); trang hiển thị trực tiếp đã tự cập nhật mỗi phút
 permissions:
   contents: write
 concurrency:
@@ -20,7 +20,14 @@ jobs:
           node-version: 22
       - name: Build từ bảng hàng
         run: node build.mjs
+      - name: Kiểm tra dữ liệu có đổi không
+        id: diff
+        run: |
+          old=$(curl -sf https://canholumi.com/data-hash.txt || true)
+          new=$(cat dist/data-hash.txt)
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$old" != "$new" ]; then echo "deploy=1" >> $GITHUB_OUTPUT; else echo "Không đổi, bỏ qua"; fi
       - name: Đẩy lên nhánh gh-pages
+        if: steps.diff.outputs.deploy == '1'
         run: |
           cd dist
           git init -q -b gh-pages

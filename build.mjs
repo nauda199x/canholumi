@@ -10,6 +10,7 @@ const PHONE_INTL = '+84977923284';
 const ZALO = `https://zalo.me/${PHONE}`;
 const API = 'https://lumihanoi.pages.dev/api/listings';
 const OUT = 'dist';
+const LIVE_URL = fs.existsSync('live-endpoint.txt') ? fs.readFileSync('live-endpoint.txt', 'utf8').trim() : '';
 
 // ---------- Dữ liệu ----------
 async function loadData() {
@@ -81,7 +82,8 @@ function prepare(raw) {
 }
 
 // ---------- Mẫu HTML ----------
-const CSS_VER = Date.now().toString(36);
+import crypto from 'node:crypto';
+const CSS_VER = crypto.createHash('sha1').update(fs.readFileSync('static/assets/site.css') + fs.readFileSync('static/assets/site.js')).digest('hex').slice(0, 8);
 function layout({ title, desc, canonical, body, jsonld = [], ogImage, noindex = false, active = '' }) {
   const nav = [['/', 'Cho thuê'], ['/mua-ban/', 'Mua bán'], ['/toa/', 'Các tòa'], ['/chu-nha-ky-gui/', 'Chủ nhà ký gửi']];
   return `<!doctype html>
@@ -138,6 +140,7 @@ ${body}
   <p class="foot-note">Giá và tình trạng căn có thể thay đổi; vui lòng nhắn Zalo để xác nhận trước khi xem nhà. canholumi.com không phải website của chủ đầu tư.</p>
 </footer>
 <a class="float-zalo" href="${ZALO}" rel="nofollow" aria-label="Nhắn Zalo ${PHONE}">Zalo</a>
+<script>window.LIVE_URL=${JSON.stringify(LIVE_URL)};</script>
 <script src="/assets/site.js?v=${CSS_VER}" defer></script>
 </body>
 </html>`;
@@ -177,12 +180,12 @@ function skyline(byTower, linkBase = '/toa/') {
 function card(x, eager = false) {
   const img = x.images[0];
   const facts = [x.area ? m2(x.area) : '', `Tòa ${x.tower}`, x.dir ? `Hướng ${x.dir}` : ''].filter(Boolean);
-  return `<article class="card" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.interior.startsWith('Full') ? 'full' : x.interior ? 'basic' : ''}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}">
+  return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.interior.startsWith('Full') ? 'full' : x.interior ? 'basic' : ''}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}">
 <a href="${x.url}" class="card-link">
 <div class="ph">${img ? `<img src="${img.replace(/sz=w\d+/, 'sz=w640')}" alt="${esc(cap(x.t.name))} tòa ${x.tower} Lumi Hà Nội" loading="${eager ? 'eager' : 'lazy'}" decoding="async" width="640" height="480">` : `<div class="noimg">${logoSvg()}<span>Ảnh đang cập nhật</span></div>`}
 ${x.images.length && !x.realPhotos ? '<span class="badge">Ảnh minh hoạ</span>' : ''}${x.images.length > 1 ? `<span class="count">${x.images.length} ảnh</span>` : ''}</div>
 <div class="cb">
-<p class="price">${esc(x.priceText)}</p>
+<p class="price" data-f="price">${esc(x.priceText)}</p>
 <h3>${esc(x.t.short)}${x.interior ? ` · ${esc(x.interior.toLowerCase())}` : ''}</h3>
 <p class="facts">${facts.map(esc).join(', ')}</p>
 <p class="code">Mã căn ${esc(x.id)}</p>
@@ -240,11 +243,11 @@ function stats(list) {
 }
 const tr = v => (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 });
 
-function listPage({ list, h1, lead, crumbs, canonical, title, desc, extra = '', active = '' }) {
+function listPage({ list, h1, lead, crumbs, canonical, title, desc, extra = '', active = '', scope = {} }) {
   const bc = breadcrumbs(crumbs);
   const body = `${bc.html}
 <section class="page-head"><h1>${esc(h1)}</h1><p class="lead">${lead}</p></section>
-<section class="listing">${filters(list)}<div class="grid" id="ds">${list.map((x, i) => card(x, i < 3)).join('')}</div>
+<section class="listing">${filters(list)}<div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}">${list.map((x, i) => card(x, i < 3)).join('')}</div>
 <p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. Nhắn Zalo ${PHONE} để được báo khi có căn phù hợp.</p></section>
 ${extra}`;
   return layout({ title, desc, canonical, body, active, ogImage: list.find(x => x.images[0])?.images[0], jsonld: [ORG, bc.ld, itemList(list, h1)] });
@@ -269,7 +272,7 @@ function homePage(all, meta) {
 <section class="hero">
   <div class="hero-in">
     <h1>Cho thuê căn hộ Lumi Hà Nội</h1>
-    <p class="hero-sub"><b>${rent.length} căn</b> đang trống ở các tòa Lumi, cập nhật từ bảng hàng lúc ${updTxt}. Mỗi ô sáng là một căn đang chờ người thuê — chọn tòa để xem.</p>
+    <p class="hero-sub"><b data-count="rent">${rent.length} căn</b> đang trống ở các tòa Lumi, cập nhật từ bảng hàng lúc <span data-live="time">${updTxt}</span>. Mỗi ô sáng là một căn đang chờ người thuê — chọn tòa để xem.</p>
     <div class="hero-sky">${skyline(byTower)}</div>
     <div class="hero-cta"><a class="btn btn-lamp" href="#danh-sach">Xem ${rent.length} căn cho thuê</a><a class="btn btn-ghost" href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE}</a></div>
   </div>
@@ -278,7 +281,7 @@ function homePage(all, meta) {
 ${Object.entries(st).filter(([k]) => k !== 'Duplex').map(([k, v]) => `<a class="pr" href="/loai/${TYPE_INFO[k].slug}/"><span class="pr-t">${TYPE_INFO[k].short}</span><span class="pr-v">${tr(v.min)}–${tr(v.max)} <small>triệu/tháng</small></span><span class="pr-n">${v.n} căn đang có</span></a>`).join('')}
 </section>
 <section class="listing" id="danh-sach"><h2>Danh sách căn đang cho thuê</h2>${filters(rent)}
-<div class="grid" id="ds">${rent.map(card).join('')}</div>
+<div class="grid" id="ds" data-scope="${esc(JSON.stringify({ rent: 1 }))}">${rent.map(card).join('')}</div>
 <p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. Nhắn Zalo ${PHONE} để được báo khi có căn phù hợp.</p></section>
 <section class="about">
   <div class="about-in">
@@ -307,12 +310,13 @@ function unitPage(x, all) {
   const desc = `${unitTitle(x)}${x.dir ? `, hướng ${x.dir}` : ''}${x.interior ? `, ${x.interior.toLowerCase()}` : ''}. Giá ${x.priceText}. Mã căn ${x.id}. Nhắn Zalo ${PHONE} để xem nhà.`;
   const imgs = x.images.map(u => u.replace(/sz=w\d+/, 'sz=w1280'));
   const body = `${bc.html}
-<article class="unit">
+<article class="unit" data-unit="${esc(x.id)}">
   <div class="gallery">${imgs.length ? `<div class="g-main" tabindex="0" aria-label="Ảnh căn hộ, vuốt ngang để xem thêm">${imgs.map((u, i) => `<img src="${u}" alt="${esc(unitTitle(x))} – ảnh ${i + 1}" loading="${i ? 'lazy' : 'eager'}" ${i ? '' : 'fetchpriority="high"'} width="1280" height="960">`).join('')}</div>
   ${!x.realPhotos ? '<p class="g-note">Ảnh minh hoạ căn cùng loại, cùng kiểu nội thất. Nhắn Zalo để nhận ảnh/video thực tế của căn này.</p>' : `<p class="g-note">${imgs.length} ảnh chụp thực tế căn ${esc(x.id)} – vuốt ngang để xem.</p>`}` : `<div class="noimg big">${logoSvg()}<span>Ảnh căn này đang được cập nhật. Nhắn Zalo để nhận ảnh và video.</span></div>`}</div>
   <div class="u-info">
     <h1>${esc(unitTitle(x))}</h1>
-    <p class="u-price">${esc(x.priceText)}</p>
+    <p class="u-gone" hidden>Căn này vừa được gỡ khỏi bảng hàng (có thể đã cho thuê). Nhắn Zalo để được giới thiệu căn tương tự.</p>
+    <p class="u-price" data-f="price">${esc(x.priceText)}</p>
     <dl class="u-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     <div class="u-cta"><a class="btn btn-zalo" href="${ZALO}" rel="nofollow">Nhắn Zalo hỏi căn ${esc(x.id)}</a><a class="btn btn-line" href="tel:${PHONE}">Gọi ${PHONE}</a></div>
     <p class="u-hint">Gửi mã <b>${esc(x.id)}</b> khi nhắn để được báo giá mới nhất và hẹn giờ xem nhà.</p>
@@ -370,7 +374,7 @@ write('index.html', homePage(all, raw)); add('/', today, '1.0');
 
 const rent = all.filter(x => x.isRent), sale = all.filter(x => !x.isRent);
 if (sale.length) {
-  write('mua-ban/index.html', listPage({ list: sale, h1: 'Mua bán căn hộ Lumi Hà Nội', lead: `${sale.length} căn đang chào bán, giá theo bảng hàng. Nhắn Zalo ${PHONE} để được tư vấn và xem nhà.`, crumbs: [['Trang chủ', '/'], ['Mua bán', '/mua-ban/']], canonical: '/mua-ban/', title: `Mua bán căn hộ Lumi Hà Nội – ${sale.length} căn chuyển nhượng | ${BRAND}`, desc: `${sale.length} căn hộ Lumi Hà Nội đang chuyển nhượng: 1PN, 2PN, 3PN các tòa. Giá rõ ràng, cập nhật hằng ngày.`, active: '/mua-ban/' }).replace(/Giá tối đa<select name="max">[\s\S]*?<\/select>/, 'Giá tối đa<select name="max"><option value="">Không giới hạn</option>' + [4, 5, 6, 8, 10].map(v => `<option value="${v * 1e9}">${v} tỷ</option>`).join('') + '</select>'));
+  write('mua-ban/index.html', listPage({ list: sale, h1: 'Mua bán căn hộ Lumi Hà Nội', lead: `${sale.length} căn đang chào bán, giá theo bảng hàng. Nhắn Zalo ${PHONE} để được tư vấn và xem nhà.`, crumbs: [['Trang chủ', '/'], ['Mua bán', '/mua-ban/']], canonical: '/mua-ban/', title: `Mua bán căn hộ Lumi Hà Nội – ${sale.length} căn chuyển nhượng | ${BRAND}`, desc: `${sale.length} căn hộ Lumi Hà Nội đang chuyển nhượng: 1PN, 2PN, 3PN các tòa. Giá rõ ràng, cập nhật hằng ngày.`, active: '/mua-ban/', scope: { rent: 0 } }).replace(/Giá tối đa<select name="max">[\s\S]*?<\/select>/, 'Giá tối đa<select name="max"><option value="">Không giới hạn</option>' + [4, 5, 6, 8, 10].map(v => `<option value="${v * 1e9}">${v} tỷ</option>`).join('') + '</select>'));
   add('/mua-ban/', today, '0.7');
 }
 
@@ -378,7 +382,7 @@ for (const t of TOWER_ORDER) {
   const l = rent.filter(x => x.tower === t);
   if (!l.length) continue;
   const p = l.filter(x => x.price).map(x => x.price);
-  write(`toa/${t.toLowerCase()}/index.html`, listPage({ list: l, h1: `Cho thuê căn hộ tòa ${t} Lumi Hà Nội`, lead: `${l.length} căn đang trống ở tòa ${t}, giá từ ${tr(Math.min(...p))} đến ${tr(Math.max(...p))} triệu/tháng.`, crumbs: [['Trang chủ', '/'], ['Các tòa', '/toa/'], [`Tòa ${t}`, `/toa/${t.toLowerCase()}/`]], canonical: `/toa/${t.toLowerCase()}/`, title: `Cho thuê căn hộ tòa ${t} Lumi Hà Nội – ${l.length} căn, từ ${tr(Math.min(...p))} triệu | ${BRAND}`, desc: `${l.length} căn hộ cho thuê tòa ${t} Lumi Hà Nội: ${[...new Set(l.map(x => x.type))].join(', ')}. Giá từ ${tr(Math.min(...p))} triệu/tháng, ảnh và mã căn rõ ràng.`, active: '/toa/' }));
+  write(`toa/${t.toLowerCase()}/index.html`, listPage({ list: l, h1: `Cho thuê căn hộ tòa ${t} Lumi Hà Nội`, lead: `${l.length} căn đang trống ở tòa ${t}, giá từ ${tr(Math.min(...p))} đến ${tr(Math.max(...p))} triệu/tháng.`, crumbs: [['Trang chủ', '/'], ['Các tòa', '/toa/'], [`Tòa ${t}`, `/toa/${t.toLowerCase()}/`]], canonical: `/toa/${t.toLowerCase()}/`, title: `Cho thuê căn hộ tòa ${t} Lumi Hà Nội – ${l.length} căn, từ ${tr(Math.min(...p))} triệu | ${BRAND}`, desc: `${l.length} căn hộ cho thuê tòa ${t} Lumi Hà Nội: ${[...new Set(l.map(x => x.type))].join(', ')}. Giá từ ${tr(Math.min(...p))} triệu/tháng, ảnh và mã căn rõ ràng.`, active: '/toa/', scope: { rent: 1, tower: t } }));
   add(`/toa/${t.toLowerCase()}/`, today, '0.8');
 }
 write('toa/index.html', towersIndex(all)); add('/toa/', today, '0.6');
@@ -387,7 +391,7 @@ for (const [k, ti] of Object.entries(TYPE_INFO)) {
   const l = rent.filter(x => x.type === k);
   if (!l.length) continue;
   const p = l.filter(x => x.price).map(x => x.price);
-  write(`loai/${ti.slug}/index.html`, listPage({ list: l, h1: `Cho thuê ${ti.name} Lumi Hà Nội`, lead: `${l.length} ${ti.name} đang cho thuê, giá từ ${tr(Math.min(...p))} đến ${tr(Math.max(...p))} triệu/tháng. ${l.filter(x => x.interior.startsWith('Full')).length} căn full nội thất.`, crumbs: [['Trang chủ', '/'], [cap(ti.short), `/loai/${ti.slug}/`]], canonical: `/loai/${ti.slug}/`, title: `Cho thuê ${ti.name} Lumi Hà Nội – ${l.length} căn, từ ${tr(Math.min(...p))} triệu | ${BRAND}`, desc: `${l.length} ${ti.name} cho thuê tại Lumi Hà Nội, giá ${tr(Math.min(...p))}–${tr(Math.max(...p))} triệu/tháng. Ảnh căn, diện tích, hướng, nội thất. Zalo ${PHONE}.` }));
+  write(`loai/${ti.slug}/index.html`, listPage({ list: l, h1: `Cho thuê ${ti.name} Lumi Hà Nội`, lead: `${l.length} ${ti.name} đang cho thuê, giá từ ${tr(Math.min(...p))} đến ${tr(Math.max(...p))} triệu/tháng. ${l.filter(x => x.interior.startsWith('Full')).length} căn full nội thất.`, crumbs: [['Trang chủ', '/'], [cap(ti.short), `/loai/${ti.slug}/`]], canonical: `/loai/${ti.slug}/`, title: `Cho thuê ${ti.name} Lumi Hà Nội – ${l.length} căn, từ ${tr(Math.min(...p))} triệu | ${BRAND}`, desc: `${l.length} ${ti.name} cho thuê tại Lumi Hà Nội, giá ${tr(Math.min(...p))}–${tr(Math.max(...p))} triệu/tháng. Ảnh căn, diện tích, hướng, nội thất. Zalo ${PHONE}.`, scope: { rent: 1, type: k } }));
   add(`/loai/${ti.slug}/`, today, '0.9');
 }
 
@@ -395,12 +399,13 @@ for (const [slug, key, name] of [['full-noi-that', 'Full', 'full nội thất'],
   const l = rent.filter(x => x.interior.startsWith(key));
   if (!l.length) continue;
   const p = l.filter(x => x.price).map(x => x.price);
-  write(`noi-that/${slug}/index.html`, listPage({ list: l, h1: `Cho thuê căn hộ Lumi Hà Nội ${name}`, lead: `${l.length} căn ${name}, giá từ ${tr(Math.min(...p))} triệu/tháng.`, crumbs: [['Trang chủ', '/'], [cap(name), `/noi-that/${slug}/`]], canonical: `/noi-that/${slug}/`, title: `Cho thuê căn hộ Lumi Hà Nội ${name} – ${l.length} căn | ${BRAND}`, desc: `${l.length} căn hộ Lumi Hà Nội ${name} đang cho thuê, từ ${tr(Math.min(...p))} triệu/tháng. 1PN, 2PN, 3PN các tòa.` }));
+  write(`noi-that/${slug}/index.html`, listPage({ list: l, h1: `Cho thuê căn hộ Lumi Hà Nội ${name}`, lead: `${l.length} căn ${name}, giá từ ${tr(Math.min(...p))} triệu/tháng.`, crumbs: [['Trang chủ', '/'], [cap(name), `/noi-that/${slug}/`]], canonical: `/noi-that/${slug}/`, title: `Cho thuê căn hộ Lumi Hà Nội ${name} – ${l.length} căn | ${BRAND}`, desc: `${l.length} căn hộ Lumi Hà Nội ${name} đang cho thuê, từ ${tr(Math.min(...p))} triệu/tháng. 1PN, 2PN, 3PN các tòa.`, scope: { rent: 1, int: key.startsWith('Full') ? 'full' : 'basic' } }));
   add(`/noi-that/${slug}/`, today, '0.8');
 }
 
 for (const x of all) { write(x.url.slice(1) + 'index.html', unitPage(x, all)); add(x.url, x.updated || today, x.isRent ? '0.7' : '0.5'); }
-write('chu-nha-ky-gui/index.html', ownerPage()); add('/chu-nha-ky-gui/', today, '0.5');
+write('chu-nha-ky-gui/index.html', ownerPage());
+write('can-ho/xem/index.html', layout({ title: `Căn hộ Lumi Hà Nội mới cập nhật | ${BRAND}`, desc: 'Căn hộ vừa thêm vào bảng hàng Lumi Hà Nội.', canonical: '/can-ho/xem/', noindex: true, body: `<article class="unit" id="dyn-unit"><div class="u-info"><p class="u-hint">Đang tải thông tin căn…</p></div></article>` })); add('/chu-nha-ky-gui/', today, '0.5');
 
 write('404.html', layout({ title: `Căn này đã cho thuê hoặc không còn | ${BRAND}`, desc: 'Trang không tồn tại.', canonical: '/404.html', noindex: true, body: `<section class="page-head narrow"><h1>Căn này đã cho thuê hoặc không còn trên bảng hàng</h1><p class="lead">Danh sách được cập nhật nhiều lần mỗi ngày nên căn đã có người thuê sẽ được gỡ. Xem các căn đang trống hoặc nhắn Zalo để được tìm căn tương tự.</p><p><a class="btn btn-lamp" href="/">Xem căn đang trống</a> <a class="btn btn-line" href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE}</a></p></section>` }));
 
@@ -410,4 +415,5 @@ const st = stats(all);
 write('llms.txt', `# ${BRAND} (canholumi.com)\n\n> Danh sách căn hộ cho thuê và mua bán tại dự án Lumi Hà Nội (Lumi Hanoi, CapitaLand Development), Đại lộ Thăng Long, Hà Nội. Dữ liệu lấy từ bảng hàng, cập nhật nhiều lần mỗi ngày. Liên hệ xem nhà: Zalo/điện thoại ${PHONE}.\n\n## Giá thuê hiện tại (${today})\n${Object.entries(st).map(([k, v]) => `- ${TYPE_INFO[k].short}: ${v.n} căn, ${tr(v.min)}–${tr(v.max)} triệu/tháng`).join('\n')}\n\n## Trang chính\n- [Căn hộ cho thuê](${SITE}/)\n${Object.values(TYPE_INFO).filter(t => fs.existsSync(path.join(OUT, 'loai', t.slug))).map(t => `- [Thuê ${t.short}](${SITE}/loai/${t.slug}/)`).join('\n')}\n- [Theo tòa](${SITE}/toa/)\n- [Mua bán](${SITE}/mua-ban/)\n- [Chủ nhà ký gửi](${SITE}/chu-nha-ky-gui/)\n`);
 fs.writeFileSync(path.join(OUT, 'CNAME'), 'canholumi.com\n');
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
+fs.writeFileSync(path.join(OUT, 'data-hash.txt'), crypto.createHash('sha1').update(JSON.stringify(all) + CSS_VER + fs.readFileSync('build.mjs')).digest('hex') + '\n');
 console.log(`OK: ${all.length} căn (${rent.length} thuê, ${sale.length} bán), ${urls.length} URL`);
