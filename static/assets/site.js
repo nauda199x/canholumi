@@ -1,93 +1,161 @@
 (() => {
   const ZALO = 'https://zalo.me/0977923284';
-  const TYPES = { '1PN': ['1-phong-ngu', '1 phòng ngủ', 'căn hộ 1 phòng ngủ'], '2PN': ['2-phong-ngu', '2 phòng ngủ', 'căn hộ 2 phòng ngủ'], '3PN': ['3-phong-ngu', '3 phòng ngủ', 'căn hộ 3 phòng ngủ'], 'Duplex': ['duplex', 'Duplex', 'căn hộ Duplex'] };
+  const TYPES = { '1PN': ['1pn', '1 phòng ngủ', 'căn hộ 1 phòng ngủ', '1-phong-ngu'], '2PN': ['2pn', '2 phòng ngủ', 'căn hộ 2 phòng ngủ', '2-phong-ngu'], '3PN': ['3pn', '3 phòng ngủ', 'căn hộ 3 phòng ngủ', '3-phong-ngu'], 'Duplex': ['duplex', 'Duplex', 'căn hộ Duplex', 'duplex'] };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = (v, d) => Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
-  const vnDate = s => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : ''; };
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
+  const SVG = {
+    area: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4Zm10 0h6v6h-2V6h-4V4ZM4 14h2v4h4v2H4v-6Zm14 0h2v6h-6v-2h4v-4Z"/></svg>',
+    dir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z"/></svg>',
+    sofa: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2a2 2 0 0 1 2 2v6h-2v2h-2v-2H7v2H5v-2H3v-6a2 2 0 0 1 2-2Zm2 0a2 2 0 0 1 2 2v2h6v-2a2 2 0 0 1 2-2V7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v2Z"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 3 5 6.5 5c2 0 3.4 1.1 4.2 2.3h2.6C14.1 6.1 15.5 5 17.5 5 21 5 23.1 8.6 21.6 11.8 19.5 16.4 12 21 12 21Z"/></svg>',
+  };
 
-  // Chuẩn hoá 1 căn từ cổng dữ liệu (giống build.mjs)
+  // ---------- Menu ----------
+  const mb = $('.menu-btn'), nav = $('#nav');
+  if (mb && nav) mb.addEventListener('click', () => { const o = mb.getAttribute('aria-expanded') !== 'true'; mb.setAttribute('aria-expanded', o); nav.classList.toggle('open', o); });
+
+  // ---------- Chuẩn hoá căn (giống build.mjs) ----------
   function norm(x) {
     const t = TYPES[x.type]; if (!t) return null;
-    const isRent = x.transaction === 'rent'; if (!isRent && x.transaction !== 'sale') return null;
+    const isRent = x.isRent ?? x.transaction === 'rent';
+    if (x.transaction && !isRent && x.transaction !== 'sale') return null;
     const tower = String(x.tower || '').trim().toUpperCase() || 'Lumi';
     const price = Number(x.price) || 0;
-    const priceText = !price ? 'Liên hệ' : isRent ? `${num(price / 1e6, 1)} triệu/tháng` : `${num(price / 1e9, 3)} tỷ`;
-    const i = String(x.interior || '');
-    const interior = /full/i.test(i) ? 'Full nội thất' : /cơ bản/i.test(i) ? 'Nội thất cơ bản' : '';
-    const dir = String(x.direction || '').trim().split(' ').map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(' ');
-    const imgs = (x.img || []).filter(id => /^[\w-]{10,}$/.test(id)).map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1280`);
-    const slug = `${isRent ? 'thue' : 'ban'}-${t[0]}-${tower.toLowerCase()}-${String(x.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-    return { id: String(x.id), isRent, type: x.type, t, tower, price, priceText, interior, intKey: interior.startsWith('Full') ? 'full' : interior ? 'basic' : '', dir, area: Number(x.area) || 0, updated: vnDate(x.updatedDate), imgs, real: x.mediaStatus === 'verified', slug };
+    const i = String(x.interior ?? x.intKey ?? '');
+    const intKey = x.intKey !== undefined ? x.intKey : /full/i.test(i) ? 'full' : /cơ bản/i.test(i) ? 'basic' : '';
+    const dir = String(x.direction ?? x.dir ?? '').trim().split(/\s+/).map(cap).join(' ');
+    const ids = (x.img || []).filter(id => /^[\w-]{10,}$/.test(id));
+    const updated = x.updated || (/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(x.updatedDate || '')) || []).slice(1).reverse().map(v => v.padStart(2, '0')).join('-');
+    const slug = String(x.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return {
+      id: String(x.id), isRent, type: x.type, t, tower, price, intKey, dir, area: Number(x.area) || 0, updated, real: x.real ?? x.mediaStatus === 'verified',
+      imgs: ids.map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1280`),
+      priceText: !price ? 'Liên hệ' : isRent ? `${num(price / 1e6, 1)} triệu/tháng` : `${num(price / 1e9, 3)} tỷ`,
+      url: `/can-ho/${isRent ? 'cho-thue' : 'ban'}-can-ho-lumi-${t[0]}-${tower.toLowerCase()}-${slug}/`, goneAt: x.goneAt,
+    };
   }
   const score = u => (u.real ? 2 : 0) + (u.imgs.length ? 1 : 0);
-  const title = u => `${u.isRent ? 'Cho thuê' : 'Bán'} ${u.t[2]} Lumi Hà Nội tòa ${u.tower}${u.area ? `, ${num(u.area, 1)}m²` : ''}`;
-
-  function cardHtml(u, href) {
-    const facts = [u.area ? `${num(u.area, 1)} m²` : '', `Tòa ${u.tower}`, u.dir ? `Hướng ${u.dir}` : ''].filter(Boolean).join(', ');
+  function cardHtml(u, href, isNew) {
     const img = u.imgs[0];
-    return `<article class="card is-new" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-new="${score(u)}${u.updated}">
-<a href="${href}" class="card-link"><div class="ph">${img ? `<img src="${img.replace('w1280', 'w640')}" alt="${esc(title(u))}" loading="lazy" width="640" height="480">` : '<div class="noimg"><span>Ảnh đang cập nhật</span></div>'}
-${u.imgs.length && !u.real ? '<span class="badge">Ảnh minh hoạ</span>' : ''}${u.imgs.length > 1 ? `<span class="count">${u.imgs.length} ảnh</span>` : ''}<span class="newtag">Mới</span></div>
-<div class="cb"><p class="price" data-f="price">${esc(u.priceText)}</p><h3>${esc(u.t[1])}${u.interior ? ` · ${esc(u.interior.toLowerCase())}` : ''}</h3><p class="facts">${esc(facts)}</p><p class="code">Mã căn ${esc(u.id)}</p></div></a></article>`;
+    return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-new="${score(u)}${u.updated || ''}">
+<a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="" loading="lazy" width="600" height="450">` : '<span class="noimg"><span>Ảnh đang cập nhật</span></span>'}
+<span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
+<button class="save" type="button" data-save="${esc(u.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(u.id)}">${SVG.heart}</button>
+<div class="card-body"><p class="price" data-f="price">${esc(u.priceText)}</p><h3><a href="${href || u.url}">${esc(cap(u.t[1]))} · Tòa ${esc(u.tower)}</a></h3>
+<ul class="facts">${u.area ? `<li>${SVG.area}${num(u.area, 1)} m²</li>` : ''}${u.dir ? `<li>${SVG.dir}${esc(u.dir)}</li>` : ''}${u.intKey ? `<li>${SVG.sofa}${u.intKey === 'full' ? 'Full đồ' : 'Cơ bản'}</li>` : ''}</ul>
+<p class="code">Mã ${esc(u.id)}${u.goneAt ? ' · đã gỡ khỏi bảng hàng' : ''}</p></div></article>`;
   }
 
-  // ---------- Bộ lọc ----------
-  const form = document.getElementById('loc');
-  const grid = document.getElementById('ds');
+  // ---------- Lưu căn ----------
+  let saved = store.get('lumi-saved', []);
+  function paintSaved() {
+    $$('[data-save]').forEach(b => b.setAttribute('aria-pressed', saved.includes(b.dataset.save)));
+    $$('[data-saved-count]').forEach(e => { e.textContent = saved.length; e.hidden = !saved.length; });
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-save]'); if (!b) return;
+    e.preventDefault();
+    const id = b.dataset.save;
+    saved = saved.includes(id) ? saved.filter(x => x !== id) : [id, ...saved].slice(0, 60);
+    store.set('lumi-saved', saved); paintSaved();
+  });
+  paintSaved();
+
+  // ---------- Chia sẻ ----------
+  const sh = $('[data-share]');
+  if (sh) sh.addEventListener('click', async () => {
+    const data = { title: document.title, url: location.href };
+    try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(location.href); sh.querySelector('span').textContent = 'Đã chép link'; } } catch { }
+  });
+
+  // ---------- Thư viện ảnh ----------
+  const lb = $('dialog.lb');
+  if (lb) {
+    const track = $('.lb-track', lb), figs = $$('figure', lb);
+    const load = i => { const im = figs[i]?.querySelector('img'); if (im && !im.src) im.src = im.dataset.src; };
+    const go = i => { i = Math.max(0, Math.min(figs.length - 1, i)); load(i); load(i + 1); load(i - 1); track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' }); };
+    const cur = () => Math.round(track.scrollLeft / track.clientWidth);
+    $$('[data-open]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.open; lb.showModal(); load(i); track.scrollLeft = i * track.clientWidth; load(i + 1); }));
+    $('.lb-x', lb).onclick = () => lb.close();
+    $('.lb-p', lb).onclick = () => go(cur() - 1);
+    $('.lb-n', lb).onclick = () => go(cur() + 1);
+    track.addEventListener('scroll', () => { const i = cur(); load(i); load(i + 1); }, { passive: true });
+    lb.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(cur() + 1); if (e.key === 'ArrowLeft') go(cur() - 1); });
+  }
+
+  // ---------- Bộ lọc + phân trang ----------
+  const form = $('#loc'), grid = $('#ds');
+  const PAGE = 24; let shown = PAGE;
+  const moreBtn = $('#more');
   function apply(updateUrl) {
-    if (!form || !grid) return;
+    if (!grid) return;
     const cards = [...grid.children];
-    const f = new FormData(form);
-    const type = f.get('type'), tower = f.get('tower'), int = f.get('int'), max = Number(f.get('max') || 0), sort = f.get('sort');
+    const f = form ? new FormData(form) : new FormData();
+    const q = String(f.get('q') || '').trim().toLowerCase().replace(/\s+/g, '');
+    const type = f.get('type'), tower = f.get('tower'), int = f.get('int'), max = Number(f.get('max') || 0), sort = f.get('sort') || 'new';
+    const by = { asc: (a, b) => (+a.dataset.price || 9e12) - (+b.dataset.price || 9e12), desc: (a, b) => +b.dataset.price - +a.dataset.price, area: (a, b) => +b.dataset.area - +a.dataset.area, new: (a, b) => (b.dataset.new || '').localeCompare(a.dataset.new || '') };
+    cards.sort(by[sort] || by.new).forEach(c => grid.appendChild(c));
     let n = 0;
     for (const c of cards) {
       const d = c.dataset;
-      const ok = !c.classList.contains('gone') && (!type || d.type === type) && (!tower || d.tower === tower) && (!int || d.int === int) && (!max || (Number(d.price) && Number(d.price) <= max));
-      c.hidden = !ok; if (ok) n++;
+      const ok = !c.classList.contains('gone') && (!q || d.id.toLowerCase().includes(q)) && (!type || d.type === type) && (!tower || d.tower === tower) && (!int || d.int === int) && (!max || (Number(d.price) && Number(d.price) <= max));
+      c.hidden = !ok;
+      c.classList.toggle('more-hidden', ok && n >= shown);
+      if (ok) n++;
     }
-    const by = { asc: (a, b) => (+a.dataset.price || 9e12) - (+b.dataset.price || 9e12), desc: (a, b) => +b.dataset.price - +a.dataset.price, area: (a, b) => +b.dataset.area - +a.dataset.area, new: (a, b) => (b.dataset.new || '').localeCompare(a.dataset.new || '') };
-    cards.sort(by[sort] || by.new).forEach(c => grid.appendChild(c));
-    document.getElementById('dem').textContent = n;
-    document.getElementById('rong').hidden = n > 0;
-    if (updateUrl) {
-      const q = new URLSearchParams();
-      for (const [k, v] of f) if (v && !(k === 'sort' && v === 'new')) q.set(k, v);
-      history.replaceState(null, '', q.toString() ? '?' + q : location.pathname);
+    const dem = $('#dem'); if (dem) dem.textContent = n;
+    const rong = $('#rong'); if (rong) rong.hidden = n > 0;
+    if (moreBtn) { moreBtn.hidden = n <= shown; moreBtn.textContent = `Xem thêm ${Math.min(PAGE, n - shown)} căn (còn ${n - shown})`; }
+    const active = form && [...f].some(([k, v]) => v && k !== 'sort');
+    const rs = $('[data-reset]'); if (rs) rs.hidden = !active;
+    if (updateUrl && form) {
+      const p = new URLSearchParams();
+      for (const [k, v] of f) if (v && !(k === 'sort' && v === 'new')) p.set(k, v);
+      history.replaceState(null, '', (p.toString() ? '?' + p : location.pathname) + location.hash);
     }
   }
-  if (form && grid) {
-    const params = new URLSearchParams(location.search);
-    for (const [k, v] of params) {
-      const el = form.elements[k];
-      if (!el) continue;
-      if (el.length !== undefined && !(el instanceof HTMLSelectElement)) { for (const r of el) if (r.value === v) r.checked = true; } else el.value = v;
+  if (grid) {
+    if (form) {
+      const params = new URLSearchParams(location.search);
+      let any = false;
+      for (const [k, v] of params) {
+        const el = form.elements[k]; if (!el) continue; any = true;
+        if (el instanceof RadioNodeList) { for (const r of el) r.checked = r.value === v; } else el.value = v;
+      }
+      form.addEventListener('change', () => { shown = PAGE; apply(true); });
+      form.addEventListener('input', e => { if (e.target.name === 'q') { shown = PAGE; apply(true); } });
+      const rs = $('[data-reset]'); if (rs) rs.addEventListener('click', () => { form.reset(); shown = PAGE; apply(true); });
+      if (any && location.pathname === '/') setTimeout(() => $('#danh-sach')?.scrollIntoView(), 50);
     }
-    form.addEventListener('change', () => apply(true));
-    if (params.toString()) apply(false);
+    if (moreBtn) moreBtn.addEventListener('click', () => { shown += PAGE; apply(false); });
+    apply(false);
   }
+
+  // ---------- Trang căn đã lưu ----------
+  const sg = $('#saved-grid');
+  async function renderSaved(units) {
+    if (!sg) return;
+    const list = saved.map(id => units.get(id)).filter(Boolean);
+    sg.innerHTML = list.map(u => cardHtml(u)).join('');
+    $('#saved-empty').hidden = list.length > 0;
+    const cp = $('#saved-copy');
+    if (cp) { cp.hidden = !list.length; cp.onclick = async () => { const txt = 'Em muốn xem các căn: ' + list.map(u => u.id).join(', '); try { await navigator.clipboard.writeText(txt); } catch { } location.href = ZALO; }; }
+    paintSaved();
+  }
+  if (sg) fetch('/data/archive.json', { cache: 'no-store' }).then(r => r.json()).then(d => { const m = new Map(); for (const x of d.units || []) { const u = norm(x); if (u) m.set(u.id, u); } renderSaved(m); }).catch(() => { });
 
   // ---------- Đồng bộ trực tiếp với bảng hàng ----------
   const LIVE = window.LIVE_URL;
   if (!LIVE) return;
   const scope = grid && grid.dataset.scope ? JSON.parse(grid.dataset.scope) : null;
-  const unitEl = document.querySelector('[data-unit]');
-  const dyn = document.getElementById('dyn-unit');
-  const timeEls = document.querySelectorAll('[data-live="time"]');
+  const unitEl = $('[data-unit]'), dyn = $('#dyn-unit');
   let busy = false;
-
-  function inScope(u) {
-    if (!scope) return false;
-    if ('rent' in scope && (scope.rent ? !u.isRent : u.isRent)) return false;
-    if (scope.tower && u.tower !== scope.tower) return false;
-    if (scope.type && u.type !== scope.type) return false;
-    if (scope.int && u.intKey !== scope.int) return false;
-    return true;
-  }
-  function setPrice(root, u) {
-    const p = root.querySelector('[data-f="price"]');
-    if (p && p.textContent !== u.priceText) { p.textContent = u.priceText; p.classList.add('changed'); }
-  }
-
+  const inScope = u => scope && !('rent' in scope && (scope.rent ? !u.isRent : u.isRent)) && (!scope.tower || u.tower === scope.tower) && (!scope.type || u.type === scope.type) && (!scope.int || u.intKey === scope.int) && (!scope.pmax || (u.price >= scope.pmin && u.price <= scope.pmax));
+  function setPrice(root, u) { const p = root.querySelector('[data-f="price"]'); if (p && p.textContent !== u.priceText && !document.documentElement.lang.startsWith('en')) { p.textContent = u.priceText; p.classList.add('changed'); } }
   async function sync() {
     if (busy || document.hidden) return; busy = true;
     try {
@@ -96,50 +164,39 @@ ${u.imgs.length && !u.real ? '<span class="badge">Ảnh minh hoạ</span>' : ''}
       if (!d.ok || !Array.isArray(d.listings) || d.listings.length < 20) return;
       const units = new Map();
       for (const x of d.listings) { const u = norm(x); if (u) units.set(u.id, u); }
-
       if (grid && scope) {
-        const seen = new Set();
         for (const c of [...grid.children]) {
           const u = units.get(c.dataset.id);
           if (!u || !inScope(u)) { c.classList.add('gone'); continue; }
-          c.classList.remove('gone'); seen.add(u.id);
-          c.dataset.price = u.price; setPrice(c, u);
+          c.classList.remove('gone'); c.dataset.price = u.price; setPrice(c, u);
         }
-        for (const u of units.values()) {
-          if (seen.has(u.id) || !inScope(u) || grid.querySelector(`[data-id="${CSS.escape(u.id)}"]`)) continue;
-          grid.insertAdjacentHTML('afterbegin', cardHtml(u, `/can-ho/xem/?id=${encodeURIComponent(u.id)}`));
+        if (!scope.noAdd) for (const u of units.values()) {
+          if (!inScope(u) || grid.querySelector(`[data-id="${CSS.escape(u.id)}"]`)) continue;
+          grid.insertAdjacentHTML('afterbegin', cardHtml(u, `/can-ho/xem/?id=${encodeURIComponent(u.id)}`, true));
         }
-        apply(false);
+        apply(false); paintSaved();
       }
-      const count = [...units.values()].filter(u => u.isRent).length;
-      document.querySelectorAll('[data-count="rent"]').forEach(e => { e.textContent = `${count} căn`; });
-
-      if (unitEl) {
-        const u = units.get(unitEl.dataset.unit);
-        unitEl.querySelector('.u-gone').hidden = !!u;
-        if (u) setPrice(unitEl, u);
-      }
+      const cnt = [...units.values()].filter(u => u.isRent).length;
+      $$('[data-count="rent"]').forEach(e => { e.textContent = `${cnt} căn`; });
+      if (unitEl) { const u = units.get(unitEl.dataset.unit); const g = $('.u-gone', unitEl); if (g) g.hidden = !!u; if (u) unitEl.querySelectorAll('[data-f="price"]').forEach(p => { if (p.textContent !== u.priceText) { p.textContent = u.priceText; p.classList.add('changed'); } }); }
       if (dyn && !dyn.dataset.done) renderDyn(units);
-
       const when = new Date(d.generatedAt || Date.now()).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-      timeEls.forEach(e => { e.textContent = when; });
-    } catch (e) { /* giữ nguyên dữ liệu tĩnh nếu cổng dữ liệu lỗi */ }
-    finally { busy = false; }
+      $$('[data-live="time"]').forEach(e => { e.textContent = when; });
+    } catch { /* lỗi mạng: giữ nguyên dữ liệu tĩnh */ } finally { busy = false; }
   }
-
   function renderDyn(units) {
     const id = new URLSearchParams(location.search).get('id');
     const u = id && units.get(id);
     dyn.dataset.done = 1;
-    if (!u) { dyn.innerHTML = `<div class="u-info"><h1>Căn này không còn trên bảng hàng</h1><p>Có thể căn đã được cho thuê. <a href="/">Xem các căn đang trống</a> hoặc <a href="${ZALO}" rel="nofollow">nhắn Zalo</a> để được tìm căn tương tự.</p></div>`; return; }
-    document.title = `${title(u)} – ${u.priceText} | Căn Hộ Lumi`;
-    const rows = [['Loại căn', u.t[1]], ['Diện tích', u.area ? `${num(u.area, 1)} m²` : ''], ['Tòa', u.tower], ['Hướng ban công', u.dir], ['Nội thất', u.interior], ['Mã căn', u.id]].filter(r => r[1]);
-    dyn.innerHTML = `<div class="gallery">${u.imgs.length ? `<div class="g-main" tabindex="0">${u.imgs.map((s, i) => `<img src="${s}" alt="${esc(title(u))} – ảnh ${i + 1}" width="1280" height="960">`).join('')}</div><p class="g-note">${u.real ? `${u.imgs.length} ảnh chụp thực tế – vuốt ngang để xem.` : 'Ảnh minh hoạ căn cùng loại, cùng kiểu nội thất.'}</p>` : '<div class="noimg big"><span>Ảnh căn này đang được cập nhật. Nhắn Zalo để nhận ảnh và video.</span></div>'}</div>
-<div class="u-info"><h1>${esc(title(u))}</h1><p class="u-price">${esc(u.priceText)}</p><dl class="u-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
-<div class="u-cta"><a class="btn btn-zalo" href="${ZALO}" rel="nofollow">Nhắn Zalo hỏi căn ${esc(u.id)}</a><a class="btn btn-line" href="tel:0977923284">Gọi 0977923284</a></div>
-<p class="u-hint">Căn vừa thêm vào bảng hàng. Gửi mã <b>${esc(u.id)}</b> khi nhắn để được hẹn xem nhà.</p></div>`;
+    if (!u) { dyn.innerHTML = `<div class="u-head"><div><h1>Căn này không còn trên bảng hàng</h1><p>Có thể căn đã được cho thuê. <a href="/#danh-sach">Xem các căn đang trống</a> hoặc <a href="${ZALO}" rel="nofollow">nhắn Zalo</a> để được tìm căn tương tự.</p></div></div>`; return; }
+    const title = `${u.isRent ? 'Cho thuê' : 'Bán'} ${u.t[2]} Lumi Hà Nội tòa ${u.tower}${u.area ? `, ${num(u.area, 1)}m²` : ''}`;
+    document.title = `${title} – ${u.priceText} | Căn Hộ Lumi`;
+    const rows = [['Loại căn', cap(u.t[1])], ['Diện tích', u.area ? `${num(u.area, 1)} m²` : ''], ['Tòa', u.tower], ['Hướng ban công', u.dir], ['Nội thất', u.intKey === 'full' ? 'Full nội thất' : u.intKey ? 'Nội thất cơ bản' : '']].filter(r => r[1]);
+    dyn.innerHTML = `<header class="u-head"><div><h1>${esc(title)}</h1><p class="u-sub">Mã căn <b>${esc(u.id)}</b> · căn vừa thêm vào bảng hàng</p></div></header>
+${u.imgs.length ? `<div class="gal gal-${Math.min(u.imgs.length, 5)}">${u.imgs.slice(0, 5).map((s, i) => `<span class="gal-i"><img src="${s}" alt="${esc(title)} – ảnh ${i + 1}"></span>`).join('')}</div><p class="g-note">${u.real ? 'Ảnh chụp thực tế.' : 'Ảnh minh hoạ căn cùng loại, cùng kiểu nội thất.'}</p>` : ''}
+<div class="u-grid"><div class="u-main"><section><h2>Thông tin căn</h2><dl class="u-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></section></div>
+<aside class="u-side"><div class="u-card"><p class="u-price">${esc(u.priceText)}</p><a class="btn btn-zalo wide" href="${ZALO}" rel="nofollow">Nhắn Zalo hỏi căn này</a><a class="btn btn-line wide" href="tel:0977923284">Gọi 0977 923 284</a><p class="u-hint">Gửi mã <b>${esc(u.id)}</b> khi nhắn để được hẹn xem nhà.</p></div></aside></div>`;
   }
-
   sync();
   setInterval(sync, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });

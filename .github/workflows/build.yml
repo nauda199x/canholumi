@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'   # dựng lại trang tĩnh (SEO); trang hiển thị trực tiếp đã tự cập nhật mỗi phút
+    - cron: '*/15 * * * *'   # dựng lại trang tĩnh (SEO); trình duyệt khách đã tự cập nhật mỗi phút
 permissions:
   contents: write
 concurrency:
@@ -25,6 +25,7 @@ jobs:
         run: |
           old=$(curl -sf https://canholumi.com/data-hash.txt || true)
           new=$(cat dist/data-hash.txt)
+          curl -sf https://canholumi.com/data/urls.txt -o old-urls.txt || : > old-urls.txt
           if [ "${{ github.event_name }}" != "schedule" ] || [ "$old" != "$new" ]; then echo "deploy=1" >> $GITHUB_OUTPUT; else echo "Không đổi, bỏ qua"; fi
       - name: Đẩy lên nhánh gh-pages
         if: steps.diff.outputs.deploy == '1'
@@ -36,3 +37,15 @@ jobs:
           git add -A
           git commit -qm "Deploy $(date -u +%FT%TZ)"
           git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
+      - name: Báo IndexNow (Bing, Yandex…) các URL mới
+        if: steps.diff.outputs.deploy == '1'
+        continue-on-error: true
+        run: |
+          sleep 90
+          comm -13 <(sort old-urls.txt) <(sort dist/data/urls.txt) > new-urls.txt || true
+          [ -s old-urls.txt ] || head -60 dist/data/urls.txt > new-urls.txt
+          n=$(wc -l < new-urls.txt); echo "URL mới: $n"
+          [ "$n" -gt 0 ] || exit 0
+          key=$(cat indexnow.key)
+          python3 -c "import json,sys;u=[l.strip() for l in open('new-urls.txt') if l.strip()][:9000];print(json.dumps({'host':'canholumi.com','key':'$key','keyLocation':'https://canholumi.com/$key.txt','urlList':u}))" > payload.json
+          curl -s -o /dev/null -w "IndexNow HTTP %{http_code}\n" -H 'Content-Type: application/json' --data @payload.json https://api.indexnow.org/indexnow

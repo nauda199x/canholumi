@@ -1,0 +1,142 @@
+[
+ {
+  "f": "ho-boi-cong-vien-lumi-ha-noi",
+  "alt": "Hồ bơi và công viên nội khu Lumi Hà Nội nhìn từ trên cao",
+  "cat": "ho-boi",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "ho-boi-ngoai-troi-lumi-signature",
+  "alt": "Hồ bơi ngoài trời giữa các tòa Lumi Signature",
+  "cat": "ho-boi",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "ho-boi-bac-thang-lumi-ha-noi",
+  "alt": "Hồ bơi bậc thang và khu ô dù cạnh tòa căn hộ Lumi",
+  "cat": "ho-boi",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "be-boi-lumi-ha-noi",
+  "alt": "Bể bơi dài nước xanh tại Lumi Hà Nội",
+  "cat": "ho-boi",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "san-tam-nang-ho-boi-lumi",
+  "alt": "Sân tắm nắng với ghế và ô dù bên hồ bơi Lumi",
+  "cat": "ho-boi",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "bien-hieu-lumi-signature",
+  "alt": "Biển hiệu Lumi Signature tại lối vào nội khu",
+  "cat": "toan-canh",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "thap-lumi-hanoi",
+  "alt": "Tháp biểu tượng Lumi Hanoi trên nền trời xanh",
+  "cat": "toan-canh",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "cau-di-bo-canh-quan-lumi",
+  "alt": "Cầu đi bộ cảnh quan xuyên qua vườn cây Lumi",
+  "cat": "canh-quan",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "san-co-golf-lumi-ha-noi",
+  "alt": "Thảm cỏ và khu tập golf trong nội khu Lumi",
+  "cat": "the-thao",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "san-tennis-lumi-ha-noi",
+  "alt": "Sân tennis ngoài trời tại Lumi Hà Nội",
+  "cat": "the-thao",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "phong-gym-lumi-ha-noi",
+  "alt": "Phòng gym trang bị đầy đủ máy tập tại Lumi",
+  "cat": "the-thao",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "sanh-lounge-lumi-ha-noi",
+  "alt": "Sảnh lounge sang trọng với sofa và màn hình lớn",
+  "cat": "sinh-hoat",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "khu-bar-cong-dong-lumi",
+  "alt": "Khu bàn bar cộng đồng có cây xanh trang trí",
+  "cat": "sinh-hoat",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "phong-sinh-hoat-cong-dong-lumi",
+  "alt": "Phòng sinh hoạt cộng đồng với kệ sách và bàn đọc",
+  "cat": "sinh-hoat",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "phong-khach-chung-lumi",
+  "alt": "Phòng khách chung với sofa cong màu kem",
+  "cat": "sinh-hoat",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "phong-bi-a-lumi-ha-noi",
+  "alt": "Phòng bi-a và giải trí cho cư dân Lumi",
+  "cat": "giai-tri",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "khu-giai-tri-bi-a-lumi",
+  "alt": "Khu giải trí có bàn bi-a và bàn shuffleboard",
+  "cat": "giai-tri",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "ban-bi-a-lumi-signature",
+  "alt": "Bàn bi-a cạnh cửa kính nhìn ra hồ bơi",
+  "cat": "giai-tri",
+  "w": 1448,
+  "h": 1086
+ },
+ {
+  "f": "cu-dan-choi-bi-a-lumi",
+  "alt": "Cư dân chơi bi-a trong phòng sinh hoạt Lumi",
+  "cat": "giai-tri",
+  "w": 1086,
+  "h": 1448
+ },
+ {
+  "f": "khu-vui-choi-tre-em-lumi",
+  "alt": "Khu vui chơi trẻ em trong nhà tại Lumi Hà Nội",
+  "cat": "tre-em",
+  "w": 1448,
+  "h": 1086
+ }
+]
