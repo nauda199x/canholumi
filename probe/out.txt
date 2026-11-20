@@ -1,3 +1,0 @@
-window.LIVE_URL="https://script.google.com/macros/s/AKfycby3
-ok True 280 keys ['area', 'direction', 'id', 'img', 'interior', 'mediaStatus', 'price', 'tower', 'transaction', 'type', 'updatedDate']
-bytes 112850
