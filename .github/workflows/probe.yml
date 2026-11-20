@@ -1,0 +1,18 @@
+name: probe
+on:
+  push:
+    paths: ['.github/workflows/probe.yml']
+permissions:
+  contents: write
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p probe
+          for u in / /cho-thue/2-phong-ngu/ /cho-thue/toa-s3/2-phong-ngu/ /bang-gia-thue-lumi-ha-noi/ /tien-ich-lumi-ha-noi/ /en/ /loai/2-phong-ngu/ /sitemap.xml /sitemap-can-ho.xml /robots.txt /data/archive.json /img/lumi/ho-boi-cong-vien-lumi-ha-noi-960.webp; do
+            echo "$(curl -s -o /tmp/b -w '%{http_code} %{size_download}' https://canholumi.com$u) $u $(grep -o '<title>[^<]*' /tmp/b | head -c 90)" >> probe/out.txt
+          done
+          git config user.name bot; git config user.email bot@canholumi.com
+          git rm -q .github/workflows/probe.yml; git add probe; git commit -qm probe-result; git push
