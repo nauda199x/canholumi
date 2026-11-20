@@ -193,12 +193,12 @@ function filters(list) {
   const towers = TOWER_ORDER.filter(t => list.some(x => x.tower === t));
   const types = Object.keys(TYPE_INFO).filter(t => list.some(x => x.type === t));
   return `<form class="filters" id="loc" aria-label="Lọc căn hộ">
-<fieldset><legend>Loại căn</legend><div class="chips">
+${types.length > 1 ? `<fieldset><legend>Loại căn</legend><div class="chips">
 <label><input type="radio" name="type" value="" checked><span>Tất cả</span></label>
-${types.map(t => `<label><input type="radio" name="type" value="${t}"><span>${TYPE_INFO[t].short}</span></label>`).join('')}</div></fieldset>
-<fieldset><legend>Tòa</legend><div class="chips">
+${types.map(t => `<label><input type="radio" name="type" value="${t}"><span>${TYPE_INFO[t].short}</span></label>`).join('')}</div></fieldset>` : ''}
+${towers.length > 1 ? `<fieldset><legend>Tòa</legend><div class="chips">
 <label><input type="radio" name="tower" value="" checked><span>Tất cả</span></label>
-${towers.map(t => `<label><input type="radio" name="tower" value="${t}"><span>${t}</span></label>`).join('')}</div></fieldset>
+${towers.map(t => `<label><input type="radio" name="tower" value="${t}"><span>${t}</span></label>`).join('')}</div></fieldset>` : ''}
 <fieldset><legend>Nội thất</legend><div class="chips">
 <label><input type="radio" name="int" value="" checked><span>Tất cả</span></label>
 <label><input type="radio" name="int" value="full"><span>Full nội thất</span></label>
