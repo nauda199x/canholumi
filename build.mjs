@@ -29,10 +29,13 @@ const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const slugId = id => String(id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const num = (v, d = 1) => Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
 const tr = v => num(v / 1e6, 1);
+const kpm = v => num(Math.round(v / 1000), 0); // nghìn đồng/m²
 const trEn = v => (Math.round(v / 1e5) / 10).toString();
 const m2 = a => `${num(a, 1)} m²`;
 const median = a => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
 const uniq = a => [...new Set(a)];
+const T = t => { t = t.replace(/ \| Căn Hộ Lumi$/, ''); return (t + ' | Căn Hộ Lumi').length <= 66 ? t + ' | Căn Hộ Lumi' : t; };
+const D = d => { d = d.replace(/\s+/g, ' ').trim(); if (d.length <= 158) return d; const c = d.slice(0, 155); return c.slice(0, c.lastIndexOf(' ')) + '…'; };
 const sha = s => crypto.createHash('sha1').update(s).digest('hex');
 
 const TYPES = {
@@ -101,7 +104,10 @@ const score = u => (u.real ? 2 : 0) + (u.img.length ? 1 : 0);
 const sortUnits = list => [...list].sort((a, b) => score(b) - score(a) || (b.updated || '').localeCompare(a.updated || '') || a.price - b.price);
 
 // ---------- Khung trang ----------
-const ASSET_VER = sha(fs.readFileSync('static/assets/site.css', 'utf8') + fs.readFileSync('static/assets/site.js', 'utf8')).slice(0, 8);
+const ASSET_VER = sha(fs.readFileSync('static/assets/site.js', 'utf8')).slice(0, 8);
+const minCss = c => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s*\n\s*/g, '').replace(/\s*([{}:;,>])\s*/g, '$1').replace(/;}/g, '}');
+const INLINE_CSS = minCss(fs.readFileSync('static/assets/fonts.css', 'utf8') + fs.readFileSync('static/assets/site.css', 'utf8'));
+const FONT_PRELOAD = ['latin-400', 'vietnamese-400', 'latin-800'].map(f => `<link rel="preload" href="/fonts/bvp-${f}.woff2" as="font" type="font/woff2" crossorigin>`).join('\n');
 const photo = f => PHOTOS.find(p => p.f === f);
 const HERO = photo('ho-boi-cong-vien-lumi-ha-noi');
 function pic(p, { sizes = '(max-width: 700px) 100vw, 50vw', cls = '', eager = false, alt } = {}) {
@@ -122,18 +128,22 @@ const I = {
   share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7l-6.7 3.4a3 3 0 1 0 0 3.2L15 17a3 3 0 1 0 3-1Z"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-4.2-4.2-1.4 1.4L9 19 21 7l-1.4-1.4Z"/></svg>',
 };
+const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${Object.entries(I).map(([k, v]) => v.replace('<svg viewBox="0 0 24 24" aria-hidden="true">', `<symbol id="i-${k}" viewBox="0 0 24 24">`).replace('</svg>', '</symbol>')).join('')}</svg>`;
+for (const k of Object.keys(I)) I[k] = `<svg class="ic ic-${k}" aria-hidden="true"><use href="#i-${k}"/></svg>`;
 const logoSvg = () => `<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="10" width="7" height="19" rx="1"/><rect x="12.5" y="3" width="7" height="26" rx="1"/><rect x="22" y="13" width="7" height="16" rx="1"/><rect class="lit" x="14.5" y="7" width="3" height="3"/><rect class="lit" x="5" y="17" width="3" height="3"/><rect class="lit" x="24" y="21" width="3" height="3"/></svg>`;
 const NAV = [['/', 'Cho thuê'], ['/cac-toa/', 'Theo tòa'], ['/bang-gia-thue-lumi-ha-noi/', 'Bảng giá'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm'], ['/mua-ban/', 'Mua bán'], ['/chu-nha-ky-gui/', 'Ký gửi']];
 
 let FOOT_LINKS = '';
-function layout({ title, desc, canonical, body, jsonld = [], ogImage, noindex = false, active = '', lang = 'vi', alt = null, preload = '', modified }) {
+let QUICK = () => '';
+function layout({ title: rawTitle, desc, canonical, body, jsonld = [], ogImage, noindex = false, active = '', lang = 'vi', alt = null, preload = '', modified }) {
+  const title = T(rawTitle);
   return `<!doctype html>
 <html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
-<meta name="description" content="${esc(desc)}">
+<meta name="description" content="${esc(D(desc))}">
 <link rel="canonical" href="${SITE}${canonical}">
 <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}">
 ${alt ? alt.map(([l, u]) => `<link rel="alternate" hreflang="${l}" href="${SITE}${u}">`).join('\n') : ''}
@@ -141,7 +151,7 @@ ${alt ? alt.map(([l, u]) => `<link rel="alternate" hreflang="${l}" href="${SITE}
 <meta property="og:locale" content="${lang === 'en' ? 'en_US' : 'vi_VN'}">
 <meta property="og:site_name" content="${BRAND}">
 <meta property="og:title" content="${esc(title)}">
-<meta property="og:description" content="${esc(desc)}">
+<meta property="og:description" content="${esc(D(desc))}">
 <meta property="og:url" content="${SITE}${canonical}">
 <meta property="og:image" content="${esc(ogImage || `${SITE}/img/og-canholumi.jpg`)}">
 <meta name="twitter:card" content="summary_large_image">
@@ -151,21 +161,21 @@ ${modified ? `<meta property="article:modified_time" content="${modified}">` : '
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/img/icon-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://drive.google.com">
+<link rel="alternate" type="application/atom+xml" title="Căn hộ Lumi mới cập nhật" href="${SITE}/feed.xml">
+${FONT_PRELOAD}
 ${preload}
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site.css?v=${ASSET_VER}">
+<style>${INLINE_CSS}</style>
 ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
 </head>
 <body>
+${SPRITE}
 <a class="skip" href="#noi-dung">${lang === 'en' ? 'Skip to content' : 'Bỏ qua menu'}</a>
 <header class="top">
   <a class="logo" href="${lang === 'en' ? '/en/' : '/'}" aria-label="${BRAND} – trang chủ">${logoSvg()}<span>Căn Hộ <b>Lumi</b></span></a>
   <nav class="nav" id="nav" aria-label="Menu chính">${NAV.map(([h, l]) => `<a href="${h}"${active === h ? ' aria-current="page"' : ''}>${l}</a>`).join('')}<a href="/en/" lang="en"${active === '/en/' ? ' aria-current="page"' : ''}>English</a></nav>
   <a class="saved-link" href="/da-luu/" aria-label="Căn đã lưu">${I.heart}<span class="saved-n" data-saved-count hidden>0</span></a>
-  <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow">${I.chat}<span>Zalo ${PHONE_FMT}</span></a>
+  <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow" aria-label="Nhắn Zalo ${PHONE_FMT}">${I.chat}<span>Zalo ${PHONE_FMT}</span></a>
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="nav" aria-label="Mở menu"><span></span><span></span><span></span></button>
 </header>
 <main id="noi-dung">
@@ -176,7 +186,7 @@ ${body}
     <div class="foot-col foot-about">
       <p class="foot-brand">${logoSvg()} Căn Hộ Lumi</p>
       <p>Cho thuê và mua bán căn hộ Lumi Hà Nội (Lumi Hanoi – CapitaLand), Đại lộ Thăng Long. Danh sách căn lấy trực tiếp từ bảng hàng và tự cập nhật.</p>
-      <p><a href="${ZALO}" rel="nofollow">Zalo ${PHONE_FMT}</a><br><a href="tel:${PHONE}">Gọi ${PHONE_FMT}</a></p>
+      <address>Lumi Hanoi, Đại lộ Thăng Long, phường Tây Mỗ, Hà Nội<br><a href="tel:${PHONE}">${PHONE_FMT}</a> · <a href="${ZALO}" rel="nofollow">Zalo</a></address>
     </div>
     ${FOOT_LINKS}
   </div>
@@ -193,17 +203,19 @@ ${body}
 </html>`;
 }
 
+const LUMI_ADDR = { '@type': 'PostalAddress', streetAddress: 'Ô C3-CH01-1, Khu đô thị mới Tây Mỗ – Đại Mỗ, Đại lộ Thăng Long', addressLocality: 'Phường Tây Mỗ', addressRegion: 'Hà Nội', addressCountry: 'VN' };
 const ORG = {
   '@context': 'https://schema.org', '@type': 'RealEstateAgent', '@id': SITE + '/#agent', name: BRAND, url: SITE + '/',
   logo: SITE + '/img/icon-512.png', image: SITE + '/img/og-canholumi.jpg', telephone: PHONE_INTL,
-  areaServed: { '@type': 'Place', name: 'Lumi Hà Nội, Đại lộ Thăng Long, Hà Nội' },
-  address: { '@type': 'PostalAddress', streetAddress: 'Dự án Lumi Hà Nội, Đại lộ Thăng Long', addressLocality: 'Hà Nội', addressCountry: 'VN' },
+  address: LUMI_ADDR, hasMap: 'https://www.google.com/maps/search/?api=1&query=Lumi+Hanoi+CapitaLand', knowsLanguage: ['vi', 'en'],
+  areaServed: ['Lumi Hà Nội', 'Phường Tây Mỗ', 'Đại Mỗ', 'Nam Từ Liêm', 'Hà Nội'].map(n => ({ '@type': 'Place', name: n })),
+  contactPoint: { '@type': 'ContactPoint', telephone: PHONE_INTL, contactType: 'customer service', areaServed: 'VN', availableLanguage: ['Vietnamese', 'English'] },
   sameAs: ['https://www.facebook.com/profile.php?id=61596073111809'],
 };
 const COMPLEX = {
   '@context': 'https://schema.org', '@type': 'ApartmentComplex', '@id': SITE + '/#lumi', name: 'Lumi Hà Nội (Lumi Hanoi)',
   description: 'Dự án căn hộ của CapitaLand Development sát Đại lộ Thăng Long, phía Tây Hà Nội.',
-  address: { '@type': 'PostalAddress', streetAddress: 'Đại lộ Thăng Long', addressLocality: 'Hà Nội', addressCountry: 'VN' },
+  address: LUMI_ADDR, hasMap: 'https://www.google.com/maps/search/?api=1&query=Lumi+Hanoi+CapitaLand', containedInPlace: { '@type': 'City', name: 'Hà Nội' },
   amenityFeature: ['Hồ bơi ngoài trời', 'Phòng gym', 'Sân tennis', 'Khu vui chơi trẻ em', 'Phòng sinh hoạt cộng đồng', 'Phòng bi-a'].map(n => ({ '@type': 'LocationFeatureSpecification', name: n, value: true })),
   image: ['ho-boi-cong-vien-lumi-ha-noi', 'bien-hieu-lumi-signature', 'phong-gym-lumi-ha-noi'].map(f => `${SITE}/img/lumi/${f}.jpg`),
 };
@@ -221,7 +233,7 @@ const faqHtml = (faq, h = 'Câu hỏi thường gặp') => `<section class="faq 
 function card(x, i = 9) {
   const img = x.imgs[0];
   return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}">
-<a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<span class="noimg">${logoSvg()}<span>Ảnh đang cập nhật</span></span>`}
+<a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(x.title)}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<span class="noimg">${logoSvg()}<span>Ảnh đang cập nhật</span></span>`}
 <span class="tags">${x.real ? '<span class="tag tag-real">Ảnh thật</span>' : x.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${x.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
 <button class="save" type="button" data-save="${esc(x.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(x.id)}">${I.heart}</button>
 <div class="card-body">
@@ -246,7 +258,8 @@ ${uniq(list.map(x => x.intKey).filter(Boolean)).length > 1 ? `<fieldset class="f
 <p class="result" aria-live="polite"><b id="dem">${list.length}</b> căn phù hợp <button type="button" class="reset" data-reset hidden>Xoá bộ lọc</button></p>
 </form>`;
 }
-const grid = (list, scope) => `<div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}">${list.map((x, i) => card(x, i)).join('')}</div>
+const HTML_CAP = 48;
+const grid = (list, scope) => `<h2 class="sr">Danh sách căn</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}" data-total="${list.length}">${list.slice(0, HTML_CAP).map((x, i) => card(x, i)).join('')}</div>
 <p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. <a href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE_FMT}</a> để được báo khi có căn phù hợp.</p>
 <p class="more-wrap"><button type="button" class="btn btn-line" id="more" hidden>Xem thêm căn</button></p>`;
 
@@ -254,7 +267,8 @@ const grid = (list, scope) => `<div class="grid" id="ds" data-scope="${esc(JSON.
 function stat(list) {
   const p = list.filter(x => x.price).map(x => x.price);
   const a = list.filter(x => x.area).map(x => x.area);
-  return { n: list.length, min: p.length ? Math.min(...p) : 0, max: p.length ? Math.max(...p) : 0, med: median(p), areaMin: a.length ? Math.min(...a) : 0, areaMax: a.length ? Math.max(...a) : 0, full: list.filter(x => x.intKey === 'full').length, real: list.filter(x => x.real).length };
+  const ppm = list.filter(x => x.price && x.area).map(x => x.price / x.area);
+  return { ppm: median(ppm), n: list.length, min: p.length ? Math.min(...p) : 0, max: p.length ? Math.max(...p) : 0, med: median(p), areaMin: a.length ? Math.min(...a) : 0, areaMax: a.length ? Math.max(...a) : 0, full: list.filter(x => x.intKey === 'full').length, real: list.filter(x => x.real).length };
 }
 function introText(list, what, sale = false) {
   const s = stat(list);
@@ -268,18 +282,27 @@ function introText(list, what, sale = false) {
 }
 
 // ---------- Trang danh sách ----------
-function listPage({ list, scope, h1, crumbs, canonical, title, desc, what, related = [], faq = [], active = '', filterOpts = {}, heroPhoto, sale = false }) {
+function listPage({ list, scope, h1, crumbs, canonical, title, desc, what, related = [], faq = [], active = '', filterOpts = {}, heroPhoto, sale = false, extra = '' }) {
   const bc = breadcrumbs(crumbs);
   const sorted = sortUnits(list);
   const hp = photo(heroPhoto || 'ho-boi-ngoai-troi-lumi-signature');
-  const body = `<section class="page-hero has-photo">${pic(hp, { sizes: '100vw', cls: 'ph-bg', eager: true, alt: '' })}
-<div class="wrap">${bc.html}<h1>${esc(h1)}</h1><p class="lead">${introText(list, what, sale)}</p></div></section>
+  const body = `<section class="page-hero has-photo">${pic(hp, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}
+<div class="wrap">${bc.html}<h1>${esc(h1)}</h1><p class="lead">${introText(list, what, sale)}</p><p class="byline">Cập nhật ${DATE_LABEL} · tự đồng bộ với bảng hàng</p></div></section>
 ${related.length ? `<nav class="rel wrap" aria-label="Trang liên quan"><span>Xem thêm:</span>${related.map(([u, l]) => `<a href="${u}">${esc(l)}</a>`).join('')}</nav>` : ''}
 <section class="listing wrap" id="danh-sach">${filters(list, filterOpts)}${grid(sorted, scope)}</section>
-${faq.length ? faqHtml(faq) : ''}`;
+${extra}${faq.length ? faqHtml(faq) : ''}`;
   return layout({ title, desc, canonical, body, active, ogImage: sorted.find(x => x.imgs[0])?.imgs[0], jsonld: [ORG, bc.ld, itemList(sorted, h1), ...(faq.length ? [faqLd(faq)] : [])] });
 }
 
+function towerSummary(t, list) {
+  const s = stat(list);
+  const rows = Object.keys(TYPES).map(k => [k, list.filter(x => x.type === k)]).filter(([, l]) => l.length).map(([k, l]) => { const q = stat(l); return [cap(TYPES[k].short), q.n, `${tr(q.min)}–${tr(q.max)} tr`, `<b>${tr(q.med)} tr</b>`, q.ppm ? `${kpm(q.ppm)}k/m²` : '–']; });
+  const dirs = uniq(list.map(x => x.dir).filter(Boolean)).map(d => [d, list.filter(x => x.dir === d).length]).sort((a, b) => b[1] - a[1]);
+  return `<section class="wrap seo-block"><h2>Tổng quan căn cho thuê tòa ${t}</h2>
+<p>Tòa ${t} hiện có ${s.n} căn trên bảng hàng${s.ppm ? `, giá thuê mức giữa khoảng ${kpm(s.ppm)} nghìn đồng/m²/tháng` : ''}. ${dirs.length ? `Hướng ban công: ${dirs.map(([d, n]) => `${esc(d)} ${n} căn`).join(', ')}.` : ''} ${s.full ? `${s.full} căn cho thuê kèm đầy đủ nội thất.` : ''}</p>
+${priceTable(rows, ['Loại căn', 'Số căn', 'Khoảng giá', 'Mức giữa', 'Giá/m²'])}
+<p class="muted">Giá/m² = giá thuê tháng chia diện tích, lấy mức giữa của các căn. Số liệu tự cập nhật theo bảng hàng.</p></section>`;
+}
 // ---------- Đường chân trời (tòa) ----------
 function skyline(byTower) {
   const towers = TOWER_ORDER.filter(t => byTower[t]?.length);
@@ -295,9 +318,13 @@ function skyline(byTower) {
       const r = Math.floor(k / cols), c = k % cols, lit = k < n;
       wins += `<rect class="${lit ? 'w lit' : 'w'}" x="${x + pad + c * 16}" y="${y + pad + 18 + (rows - 1 - r) * cell}" width="10" height="8" rx="1"${lit ? ` style="--d:${(k * 23) % 900}ms"` : ''}/>`;
     }
-    return `<a href="/cho-thue/toa-${t.toLowerCase()}/" aria-label="Tòa ${t}: ${n} căn đang cho thuê"><rect class="body" x="${x}" y="${y}" width="${W}" height="${h}" rx="3"/>${wins}<text class="tn" x="${x + W / 2}" y="${H - 14}" text-anchor="middle">${t}</text><text class="tc" x="${x + W / 2}" y="${y - 8}" text-anchor="middle">${n} căn</text></a>`;
+    return `<a href="/cho-thue/toa-${t.toLowerCase()}/"><rect class="body" x="${x}" y="${y}" width="${W}" height="${h}" rx="3"/>${wins}<text class="tn" x="${x + W / 2}" y="${H - 14}" text-anchor="middle">${t}</text><text class="tc" x="${x + W / 2}" y="${y - 8}" text-anchor="middle">${n} căn</text></a>`;
   }).join('');
   return `<svg class="skyline" viewBox="-4 0 ${svgW + 8} ${H}" role="img" aria-label="Số căn đang cho thuê theo từng tòa"><line class="ground" x1="-4" x2="${svgW + 4}" y1="${H - 40}" y2="${H - 40}"/>${parts}</svg>`;
+}
+const MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=Lumi+Hanoi+CapitaLand';
+function mapFacade() {
+  return `<div class="map map-facade" data-map="https://www.google.com/maps?q=Lumi+Hanoi+CapitaLand&amp;output=embed">${pic(photo('thap-lumi-hanoi'), { sizes: '(max-width: 860px) 100vw, 50vw', alt: 'Tháp biểu tượng Lumi Hanoi' })}<div class="map-cta"><p>Lumi Hanoi · Phường Tây Mỗ, Hà Nội</p><button type="button" class="btn btn-lamp" data-load-map>Xem bản đồ</button><a class="btn btn-ghost" href="${MAPS_URL}" target="_blank" rel="noopener">Mở Google Maps</a></div></div>`;
 }
 function amenityBento() {
   const pick = ['ho-boi-ngoai-troi-lumi-signature', 'phong-gym-lumi-ha-noi', 'sanh-lounge-lumi-ha-noi', 'khu-vui-choi-tre-em-lumi', 'cau-di-bo-canh-quan-lumi', 'san-tennis-lumi-ha-noi'].map(photo);
@@ -325,10 +352,10 @@ function homePage(all, meta) {
   const types = ['1PN', '2PN', '3PN'].filter(k => rent.some(x => x.type === k));
   const towers = TOWER_ORDER.filter(t => byTower[t]);
   const faq = homeFaq(rent, upd);
-  const heroSet = [480, 960, 1600].map(z => `/img/lumi/${HERO.f}-${z}.webp ${z}w`).join(', ');
+  const heroSet = [640, 1080, 1600].map(z => `/img/lumi/hero-lumi-${z}.webp ${z}w`).join(', ');
   const body = `
 <section class="hero">
-  ${pic(HERO, { sizes: '100vw', cls: 'hero-bg', eager: true, alt: '' })}
+  <img class="hero-bg" src="/img/lumi/hero-lumi-1080.webp" srcset="/img/lumi/hero-lumi-640.webp 640w, /img/lumi/hero-lumi-1080.webp 1080w, /img/lumi/hero-lumi-1600.webp 1600w" sizes="100vw" alt="" width="1600" height="1200" fetchpriority="high" decoding="async">
   <div class="hero-in wrap">
     <p class="hero-kicker"><span class="dot" aria-hidden="true"></span><b data-count="rent">${rent.length} căn</b> đang trống · cập nhật <span data-live="time">${upd}</span></p>
     <h1>Cho thuê căn hộ Lumi Hà Nội</h1>
@@ -351,6 +378,7 @@ function homePage(all, meta) {
   ${types.map(t => { const st = stat(rent.filter(x => x.type === t)); return `<a class="pr" href="/cho-thue/${TYPES[t].slug}/"><span class="pr-t">${cap(TYPES[t].short)}</span><span class="pr-v">${tr(st.min)}–${tr(st.max)}<small> triệu/tháng</small></span><span class="pr-n">${st.n} căn · mức giữa ${tr(st.med)} triệu</span></a>`; }).join('')}
   <a class="pr pr-link" href="/bang-gia-thue-lumi-ha-noi/"><span class="pr-t">Bảng giá thuê ${MONTH_LABEL}</span><span class="pr-v sm">Chi tiết theo tòa, diện tích, nội thất</span><span class="pr-n">Xem bảng giá</span></a>
 </section>
+<nav class="wrap quick" aria-label="Tìm nhanh">${QUICK()}</nav>
 <section class="listing wrap" id="danh-sach">
   <div class="sec-head"><h2>Căn hộ Lumi đang cho thuê</h2><p>${s.real} căn có ảnh chụp thực tế · ${s.full} căn full nội thất</p></div>
   ${filters(rent)}${grid(rent, { rent: 1 })}
@@ -377,13 +405,13 @@ function homePage(all, meta) {
     <ul class="ticks"><li>${I.check}Mặt Đại lộ Thăng Long, đi trung tâm và các khu văn phòng phía Tây</li><li>${I.check}Kết nối Vành đai 3.5</li><li>${I.check}Nội khu với hồ bơi, công viên, sân thể thao</li></ul>
     <p><a href="/kinh-nghiem-thue-can-ho-lumi/">Kinh nghiệm thuê căn hộ Lumi</a> · <a href="/bang-gia-thue-lumi-ha-noi/">Bảng giá thuê ${MONTH_LABEL}</a></p>
   </div>
-  <div class="map"><iframe title="Bản đồ vị trí Lumi Hà Nội" src="https://www.google.com/maps?q=Lumi+Hanoi+CapitaLand&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+  ${mapFacade()}
 </section>
 ${faqHtml(faq)}
 <section class="wrap guides">
   <h2>Thông tin hữu ích</h2>
   <div class="g-grid">
-    ${[['/bang-gia-thue-lumi-ha-noi/', `Bảng giá thuê Lumi ${MONTH_LABEL}`, 'Giá thấp nhất, mức giữa và cao nhất theo loại căn, tòa và nội thất.', 'ho-boi-bac-thang-lumi-ha-noi'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm thuê căn hộ Lumi', 'Chọn loại căn, hướng ban công, nội thất và những điều cần hỏi trước khi cọc.', 'phong-khach-chung-lumi'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích Lumi Hà Nội', 'Hồ bơi, gym, sân tennis, khu trẻ em, phòng sinh hoạt cộng đồng.', 'phong-gym-lumi-ha-noi'], ['/chu-nha-ky-gui/', 'Chủ nhà ký gửi căn', 'Đưa căn lên bảng hàng, website và nhóm cư dân Lumi mỗi ngày.', 'bien-hieu-lumi-signature']].map(([u, h, d, ph]) => `<a class="g-card" href="${u}">${pic(photo(ph), { sizes: '(max-width: 700px) 100vw, 25vw', alt: '' })}<h3>${h}</h3><p>${d}</p></a>`).join('')}
+    ${[['/bang-gia-thue-lumi-ha-noi/', `Bảng giá thuê Lumi ${MONTH_LABEL}`, 'Giá thấp nhất, mức giữa và cao nhất theo loại căn, tòa và nội thất.', 'ho-boi-bac-thang-lumi-ha-noi'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm thuê căn hộ Lumi', 'Chọn loại căn, hướng ban công, nội thất và những điều cần hỏi trước khi cọc.', 'phong-khach-chung-lumi'], ['/so-sanh-can-1pn-2pn-3pn-lumi/', 'So sánh căn 1PN, 2PN, 3PN', 'Diện tích, giá thuê, giá/m² từng loại căn theo số liệu bảng hàng.', 'phong-sinh-hoat-cong-dong-lumi'], ['/xung-quanh-lumi-ha-noi/', 'Lumi Hà Nội ở đâu?', 'Địa chỉ, đi lại, chợ và trường học quanh dự án.', 'thap-lumi-hanoi'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích Lumi Hà Nội', 'Hồ bơi, gym, sân tennis, khu trẻ em, phòng sinh hoạt cộng đồng.', 'phong-gym-lumi-ha-noi'], ['/chu-nha-ky-gui/', 'Chủ nhà ký gửi căn', 'Đưa căn lên bảng hàng, website và nhóm cư dân Lumi mỗi ngày.', 'bien-hieu-lumi-signature']].map(([u, h, d, ph]) => `<a class="g-card" href="${u}">${pic(photo(ph), { sizes: '(max-width: 700px) 100vw, 25vw', alt: '' })}<h3>${h}</h3><p>${d}</p></a>`).join('')}
   </div>
 </section>`;
   return layout({
@@ -425,7 +453,7 @@ function unitPage(x, all) {
 <article class="unit wrap" data-unit="${esc(x.id)}">
   <header class="u-head">
     <div><h1>${esc(x.title)}</h1><p class="u-sub">Mã căn <b>${esc(x.id)}</b>${dt ? ` · cập nhật ${dt}` : ''}${x.real ? ' · <span class="tag tag-real">Ảnh thật</span>' : ''}</p></div>
-    <div class="u-actions"><button type="button" class="btn btn-soft" data-save="${esc(x.id)}" aria-pressed="false">${I.heart}<span>Lưu căn</span></button><button type="button" class="btn btn-soft" data-share>${I.share}<span>Chia sẻ</span></button></div>
+    <div class="u-actions"><button type="button" class="btn btn-soft" data-save="${esc(x.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(x.id)}">${I.heart}<span>Lưu căn</span></button><button type="button" class="btn btn-soft" data-share aria-label="Chia sẻ căn này">${I.share}<span>Chia sẻ</span></button></div>
   </header>
   <p class="u-gone"${gone ? '' : ' hidden'}>Căn này đã được gỡ khỏi bảng hàng (có thể đã cho thuê). Xem các căn tương tự bên dưới hoặc nhắn Zalo để được tìm căn mới.</p>
   ${gallery}
@@ -453,7 +481,7 @@ ${similar.length ? `<section class="listing wrap"><h2>Căn ${esc(x.t.short)} tư
     offers: { '@type': 'Offer', ...(x.price ? { price: x.price } : {}), priceCurrency: 'VND', businessFunction: `http://purl.org/goodrelations/v1#${x.isRent ? 'LeaseOut' : 'Sell'}`, availability: gone ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock', seller: { '@id': SITE + '/#agent' } },
     about: { '@type': 'Apartment', name: `${x.t.name} tòa ${x.tower} Lumi Hà Nội`, ...(x.type !== 'Duplex' ? { numberOfBedrooms: Number(x.type[0]), numberOfRooms: Number(x.type[0]) } : {}), ...(x.area ? { floorSize: { '@type': 'QuantitativeValue', value: x.area, unitCode: 'MTK' } } : {}), containedInPlace: { '@id': SITE + '/#lumi' }, address: COMPLEX.address },
   };
-  return layout({ title: `${x.title} – ${x.priceText} | ${BRAND}`, desc, canonical: x.url, body, noindex: gone, ogImage: imgs[0], jsonld: [ORG, bc.ld, ld] });
+  return layout({ title: `${x.isRent ? 'Cho thuê' : 'Bán'} ${x.t.code.toUpperCase()} Lumi Hà Nội ${x.tower}${x.area ? ` ${m2(x.area).replace(' ', '')}` : ''} ${x.priceText} (${x.id})`, desc, canonical: x.url, body, noindex: gone, ogImage: imgs[0], jsonld: [ORG, bc.ld, ld] });
 }
 
 // ---------- Trang nội dung ----------
@@ -461,7 +489,7 @@ function article({ canonical, title, desc, h1, crumbs, lead, sections, heroPhoto
   const bc = breadcrumbs(crumbs);
   const hp = photo(heroPhoto);
   const toc = sections.map((s, i) => s.h ? `<li><a href="#m${i}">${esc(s.h)}</a></li>` : '').join('');
-  const body = `<section class="page-hero has-photo">${pic(hp, { sizes: '100vw', cls: 'ph-bg', eager: true, alt: '' })}<div class="wrap">${bc.html}<h1>${esc(h1)}</h1><p class="lead">${lead}</p><p class="byline">Cập nhật ${DATE_LABEL} · ${BRAND}</p></div></section>
+  const body = `<section class="page-hero has-photo">${pic(hp, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}<div class="wrap">${bc.html}<h1>${esc(h1)}</h1><p class="lead">${lead}</p><p class="byline">Cập nhật ${DATE_LABEL} · ${BRAND}</p></div></section>
 <div class="wrap art">
   ${toc ? `<nav class="toc" aria-label="Mục lục"><p>Nội dung</p><ol>${toc}</ol></nav>` : '<div></div>'}
   <div class="art-body">${sections.map((s, i) => `<section${s.h ? ` id="m${i}"` : ''}>${s.h ? `<h2>${esc(s.h)}</h2>` : ''}${s.html}</section>`).join('')}
@@ -478,8 +506,8 @@ function pricePage(all) {
   const rent = all.filter(x => x.isRent && x.price);
   const types = Object.keys(TYPES).filter(k => rent.some(x => x.type === k));
   const towers = TOWER_ORDER.filter(t => rent.some(x => x.tower === t));
-  const row = (l, list, href) => { const s = stat(list); return [href ? `<a href="${href}">${l}</a>` : l, s.n, `${tr(s.min)} tr`, `<b>${tr(s.med)} tr</b>`, `${tr(s.max)} tr`]; };
-  const head = ['', 'Số căn', 'Thấp nhất', 'Mức giữa', 'Cao nhất'];
+  const row = (l, list, href) => { const s = stat(list); return [href ? `<a href="${href}">${l}</a>` : l, s.n, `${tr(s.min)} tr`, `<b>${tr(s.med)} tr</b>`, `${tr(s.max)} tr`, s.ppm ? `${kpm(s.ppm)}k` : '–']; };
+  const head = ['', 'Số căn', 'Thấp nhất', 'Mức giữa', 'Cao nhất', 'Giá/m²'];
   const areaB = [[0, 50], [50, 60], [60, 70], [70, 80], [80, 100], [100, 999]].map(([a, b]) => [a, b, rent.filter(x => x.area >= a && x.area < b)]).filter(r => r[2].length >= 2);
   const s = stat(rent);
   const sections = [
@@ -487,6 +515,7 @@ function pricePage(all) {
     { h: 'Giá thuê theo nội thất', html: priceTable(types.flatMap(t => ['full', 'basic'].map(k => [t, k, rent.filter(x => x.type === t && x.intKey === k)]).filter(r => r[2].length).map(([t, k, l]) => row(`${cap(TYPES[t].short)} – ${INTERIORS[k].name}`, l, l.length >= MIN_PAGE ? `/cho-thue/${TYPES[t].slug}/${INTERIORS[k].slug}/` : ''))), head) },
     { h: 'Giá thuê theo tòa', html: `${bars(towers.map(t => [`Tòa ${t}`, stat(rent.filter(x => x.tower === t)).med, `/cho-thue/toa-${t.toLowerCase()}/`]))}<p class="muted">Thanh thể hiện mức giữa giá thuê của các căn đang trống trong tòa. Mỗi tòa có tỉ lệ 1PN/2PN/3PN khác nhau, nên xem thêm bảng bên dưới.</p>${priceTable(towers.map(t => row(`Tòa ${t}`, rent.filter(x => x.tower === t), `/cho-thue/toa-${t.toLowerCase()}/`)), head)}` },
     { h: 'Giá thuê theo diện tích', html: priceTable(areaB.map(([a, b, l]) => row(b === 999 ? `Từ ${a} m²` : a === 0 ? `Dưới ${b} m²` : `${a}–${b} m²`, l)), head) },
+    { h: 'Giá thuê theo m²', html: `<p>Tính chung toàn bộ căn đang cho thuê, mức giữa là khoảng <b>${kpm(s.ppm)} nghìn đồng/m²/tháng</b>. Theo nội thất: full nội thất ${kpm(stat(rent.filter(x => x.intKey === 'full')).ppm)}k/m², nội thất cơ bản ${kpm(stat(rent.filter(x => x.intKey === 'basic')).ppm)}k/m². Theo loại căn:</p>${bars(types.map(t => { const q = stat(rent.filter(x => x.type === t)); return [cap(TYPES[t].short), q.ppm * 50, `/cho-thue/${TYPES[t].slug}/`]; })).replace(/(\d+(,\d)?) tr<\/span>/g, (m, v) => `${num(parseFloat(v.replace(',', '.')) * 1e6 / 50 / 1000, 0)}k/m²</span>`)}` },
     { h: 'Cách đọc bảng giá', html: `<ul><li>Giá lấy trực tiếp từ bảng hàng, là giá chủ nhà chào thuê; giá chốt có thể thương lượng.</li><li>Bảng tự cập nhật khi bảng hàng thay đổi. Căn đã cho thuê không còn được tính.</li><li>Muốn biết giá chính xác của một căn, gửi mã căn qua Zalo ${PHONE_FMT}.</li></ul>` },
   ];
   return article({ canonical: '/bang-gia-thue-lumi-ha-noi/', title: `Bảng giá thuê căn hộ Lumi Hà Nội ${MONTH_LABEL} (cập nhật hằng ngày) | ${BRAND}`, desc: `Giá thuê căn hộ Lumi Hà Nội ${MONTH_LABEL}: ${s.n} căn, từ ${tr(s.min)} đến ${tr(s.max)} triệu/tháng. Bảng giá 1PN, 2PN, 3PN theo tòa, diện tích, nội thất.`, h1: `Bảng giá thuê căn hộ Lumi Hà Nội ${MONTH_LABEL}`, crumbs: [['Trang chủ', '/'], ['Bảng giá thuê', '/bang-gia-thue-lumi-ha-noi/']], lead: `Tổng hợp từ <b>${s.n} căn</b> đang cho thuê trên bảng hàng. Giá từ ${tr(s.min)} đến ${tr(s.max)} triệu/tháng, mức giữa ${tr(s.med)} triệu.`, sections, heroPhoto: 'ho-boi-bac-thang-lumi-ha-noi', active: '/bang-gia-thue-lumi-ha-noi/' });
@@ -512,6 +541,50 @@ function amenityPage() {
     ...CAT.map(([c, h, d]) => ({ h, html: `<p>${d}</p><div class="pgrid">${PHOTOS.filter(p => p.cat === c).map(p => `<figure>${pic(p, { sizes: '(max-width: 700px) 100vw, 33vw' })}<figcaption>${esc(p.alt)}</figcaption></figure>`).join('')}</div>` }))];
   return article({ canonical: '/tien-ich-lumi-ha-noi/', title: `Tiện ích Lumi Hà Nội: hồ bơi, gym, tennis, khu trẻ em (ảnh thực tế) | ${BRAND}`, desc: 'Ảnh thực tế tiện ích Lumi Hà Nội: hồ bơi ngoài trời, phòng gym, sân tennis, sảnh lounge, phòng bi-a, khu vui chơi trẻ em, cầu đi bộ cảnh quan.', h1: 'Tiện ích Lumi Hà Nội', crumbs: [['Trang chủ', '/'], ['Tiện ích', '/tien-ich-lumi-ha-noi/']], lead: 'Ảnh thực tế các tiện ích nội khu dành cho cư dân và người thuê căn hộ Lumi.', sections, heroPhoto: 'ho-boi-ngoai-troi-lumi-signature', active: '/tien-ich-lumi-ha-noi/' });
 }
+const SRC = {
+  capitaland: ['CapitaLand – Lumi Hanoi', 'https://www.capitaland.com/sites/lumihanoi/vn/index.html'],
+  capitaland2: ['CapitaLand – thông tin dự án', 'https://www.capitaland.com/vn/vi/stay/residential-development-listing/lumi-hanoi.html'],
+  cafeland: ['CafeLand – Lumi Hanoi', 'https://cafeland.vn/du-an/lumi-hanoi-du-an-chung-cu-cao-cap-tai-ha-noi-4269.html'],
+};
+const src = k => `<a href="${SRC[k][1]}" target="_blank" rel="noopener">${SRC[k][0]}</a>`;
+function areaPage() {
+  const sections = [
+    { h: 'Địa chỉ Lumi Hà Nội', html: `<p>Theo ${src('capitaland')}, địa chỉ dự án là <b>Ô C3-CH01-1, khu đô thị mới Tây Mỗ – Đại Mỗ, phường Tây Mỗ, Hà Nội</b>, kết nối trực tiếp Đại lộ Thăng Long và đường Vành đai 3.5.</p>${mapFacade()}` },
+    { h: 'Đi lại', html: `<ul><li>Theo ${src('capitaland2')}, từ dự án mất khoảng 20 phút lái xe đến quận trung tâm Hà Nội và khoảng 40 phút đến sân bay Nội Bài (thời gian thực tế phụ thuộc giờ cao điểm).</li><li>Chủ đầu tư giới thiệu khu vực có các tuyến metro số 5, 6, 7 đang được triển khai.</li></ul>` },
+    { h: 'Chợ, trường học quanh dự án', html: `<p>Theo ${src('cafeland')}:</p><ul><li>Chợ Miêu Nha: khoảng 700 m</li><li>Trường mầm non Tây Mỗ: khoảng 1 km</li><li>Trường tiểu học Lý Nam Đế: khoảng 1,1 km</li><li>Khu đô thị Vinhomes Smart City: khoảng 3,1 km</li></ul>` },
+    { h: 'Mua sắm, khách sạn lân cận', html: `<p>Bản đồ vị trí trên ${src('capitaland')} đánh dấu các điểm: Trung tâm thương mại The Manor, Đại siêu thị Big C Thăng Long, khách sạn Hyatt Regency West Hanoi, khách sạn JW Marriott Hanoi.</p>` },
+    { h: 'Tiện ích trong nội khu', html: `<p>Người thuê căn hộ dùng chung hồ bơi, phòng gym, sân tennis, khu trẻ em và phòng sinh hoạt cộng đồng. <a href="/tien-ich-lumi-ha-noi/">Xem ảnh thực tế tiện ích</a>.</p>${amenityBento()}` },
+  ];
+  return article({ canonical: '/xung-quanh-lumi-ha-noi/', title: 'Lumi Hà Nội ở đâu? Địa chỉ, đi lại, chợ, trường học xung quanh', desc: 'Địa chỉ Lumi Hà Nội (phường Tây Mỗ, Đại lộ Thăng Long), thời gian đi trung tâm và Nội Bài, chợ Miêu Nha, trường mầm non Tây Mỗ, tiểu học Lý Nam Đế, Vinhomes Smart City.', h1: 'Lumi Hà Nội ở đâu? Địa chỉ và tiện ích xung quanh', crumbs: [['Trang chủ', '/'], ['Xung quanh Lumi', '/xung-quanh-lumi-ha-noi/']], lead: 'Thông tin vị trí, đi lại và các điểm thiết yếu quanh dự án Lumi Hanoi, có ghi rõ nguồn.', sections, heroPhoto: 'thap-lumi-hanoi' });
+}
+function comparePage(all) {
+  const rent = all.filter(x => x.isRent && x.price);
+  const types = ['1PN', '2PN', '3PN'].filter(k => rent.some(x => x.type === k));
+  const st = Object.fromEntries(types.map(k => [k, stat(rent.filter(x => x.type === k))]));
+  const ft = k => stat(rent.filter(x => x.type === k && x.intKey === 'full')), bt = k => stat(rent.filter(x => x.type === k && x.intKey === 'basic'));
+  const rows = [['Số căn đang cho thuê', ...types.map(k => st[k].n)], ['Diện tích', ...types.map(k => `${m2(st[k].areaMin)}–${m2(st[k].areaMax)}`)], ['Giá thuê', ...types.map(k => `${tr(st[k].min)}–${tr(st[k].max)} tr`)], ['Mức giữa', ...types.map(k => `<b>${tr(st[k].med)} tr</b>`)], ['Giá/m² (mức giữa)', ...types.map(k => `${kpm(st[k].ppm)}k`)], ['Mức giữa full nội thất', ...types.map(k => ft(k).n ? `${tr(ft(k).med)} tr` : '–')], ['Mức giữa nội thất cơ bản', ...types.map(k => bt(k).n ? `${tr(bt(k).med)} tr` : '–')]];
+  const sections = [
+    { h: 'Bảng so sánh nhanh', html: `${priceTable(rows, ['', ...types.map(k => `<a href="/cho-thue/${TYPES[k].slug}/">${cap(TYPES[k].short)}</a>`)])}<p class="muted">Số liệu tính từ ${rent.length} căn đang cho thuê trên bảng hàng ngày ${DATE_LABEL}, tự cập nhật.</p>` },
+    ...types.map(k => ({ h: `Căn ${TYPES[k].short} phù hợp với ai?`, html: `<p>${{ '1PN': 'Người đi làm ở một mình hoặc cặp đôi, cần căn gọn, chi phí thấp nhất trong dự án.', '2PN': 'Gia đình trẻ có con nhỏ, hoặc hai người cần thêm phòng làm việc. Đây là loại căn có nhiều lựa chọn nhất.', '3PN': 'Gia đình đông người, ở cùng ông bà hoặc cần phòng riêng cho từng con.' }[k]}</p><p>${st[k].n} căn, diện tích ${m2(st[k].areaMin)}–${m2(st[k].areaMax)}, giá ${tr(st[k].min)}–${tr(st[k].max)} triệu/tháng. <a href="/cho-thue/${TYPES[k].slug}/">Xem tất cả căn ${TYPES[k].short}</a></p>` })),
+  ];
+  return article({ canonical: '/so-sanh-can-1pn-2pn-3pn-lumi/', title: `So sánh căn 1PN, 2PN, 3PN Lumi Hà Nội: diện tích, giá thuê, giá/m²`, desc: `So sánh căn hộ 1 phòng ngủ, 2 phòng ngủ, 3 phòng ngủ tại Lumi Hà Nội: diện tích, giá thuê, giá/m², chênh lệch full nội thất và cơ bản. Số liệu từ ${rent.length} căn đang cho thuê.`, h1: 'So sánh căn 1PN, 2PN, 3PN ở Lumi Hà Nội', crumbs: [['Trang chủ', '/'], ['So sánh loại căn', '/so-sanh-can-1pn-2pn-3pn-lumi/']], lead: 'Chọn loại căn hợp với số người ở và ngân sách, dựa trên số liệu thật từ bảng hàng.', sections, heroPhoto: 'phong-sinh-hoat-cong-dong-lumi' });
+}
+function contactPage() {
+  const bc = breadcrumbs([['Trang chủ', '/'], ['Liên hệ', '/lien-he/']]);
+  const body = `<section class="page-hero"><div class="wrap">${bc.html}<h1>Liên hệ Căn Hộ Lumi</h1><p class="lead">Xem nhà, hỏi giá, ký gửi căn hộ tại Lumi Hà Nội.</p></div></section>
+<section class="wrap contact"><div class="nap">
+<p class="nap-name">Căn Hộ Lumi – cho thuê căn hộ Lumi Hà Nội</p>
+<p><b>Khu vực hoạt động:</b> Dự án Lumi Hanoi, Ô C3-CH01-1, khu đô thị mới Tây Mỗ – Đại Mỗ, Đại lộ Thăng Long, phường Tây Mỗ, Hà Nội</p>
+<p><b>Điện thoại / Zalo:</b> <a href="tel:${PHONE}">${PHONE_FMT}</a></p>
+<p><b>Website:</b> <a href="${SITE}/">canholumi.com</a></p>
+<p class="cta-row"><a class="btn btn-zalo" href="${ZALO}" rel="nofollow">${I.chat}Nhắn Zalo</a><a class="btn btn-line" href="tel:${PHONE}">${I.phone}Gọi ngay</a></p>
+</div>${mapFacade()}</section>`;
+  return layout({ title: `Liên hệ Căn Hộ Lumi – thuê căn hộ Lumi Hà Nội, Zalo ${PHONE_FMT}`, desc: `Liên hệ xem nhà, hỏi giá thuê căn hộ Lumi Hà Nội (phường Tây Mỗ, Đại lộ Thăng Long). Zalo/điện thoại ${PHONE_FMT}.`, canonical: '/lien-he/', body, jsonld: [ORG, bc.ld, { '@context': 'https://schema.org', '@type': 'ContactPage', url: SITE + '/lien-he/', about: { '@id': SITE + '/#agent' } }] });
+}
+function feed(all) {
+  const list = [...all].filter(x => x.isRent).sort((a, b) => (b.updated || '').localeCompare(a.updated || '')).slice(0, 50);
+  return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><title>Căn hộ Lumi Hà Nội cho thuê – mới cập nhật</title><link href="${SITE}/feed.xml" rel="self"/><link href="${SITE}/"/><id>${SITE}/</id><updated>${NOW.toISOString()}</updated><author><name>${BRAND}</name></author>\n${list.map(x => `<entry><title>${esc(x.title)} – ${esc(x.priceText)}</title><link href="${SITE}${x.url}"/><id>${SITE}${x.url}</id><updated>${(x.updated || TODAY)}T00:00:00Z</updated><summary>${esc(`${x.t.short}, ${x.area ? m2(x.area) + ', ' : ''}tòa ${x.tower}${x.dir ? `, hướng ${x.dir}` : ''}${x.interior ? `, ${x.interior.toLowerCase()}` : ''}. Mã ${x.id}.`)}</summary></entry>`).join('\n')}\n</feed>\n`;
+}
 function ownerPage() {
   const sections = [{ h: '', html: `<ol class="steps-ol"><li><h3>Nhắn Zalo ${PHONE_FMT}</h3><p>Gửi mã căn (tòa, tầng, số căn), diện tích, giá mong muốn và tình trạng nội thất.</p></li><li><h3>Gửi ảnh hoặc video căn</h3><p>Ảnh thật giúp căn được hỏi nhiều hơn. Nếu chưa có, bên em có thể hẹn qua chụp.</p></li><li><h3>Căn lên bảng hàng và website</h3><p>Sau khi xác nhận, căn hiển thị trên canholumi.com với mã riêng, kèm bài đăng nhóm cư dân. Khi cho thuê xong, căn tự gỡ khỏi web.</p></li></ol>` }];
   return article({ canonical: '/chu-nha-ky-gui/', title: `Chủ nhà Lumi Hà Nội ký gửi cho thuê, bán căn hộ | ${BRAND}`, desc: `Chủ nhà Lumi Hà Nội muốn cho thuê hoặc bán căn hộ: nhắn Zalo ${PHONE_FMT} để đưa căn lên bảng hàng, website và nhóm cư dân.`, h1: 'Chủ nhà Lumi ký gửi cho thuê, bán căn hộ', crumbs: [['Trang chủ', '/'], ['Ký gửi', '/chu-nha-ky-gui/']], lead: 'Căn của anh chị có mặt trên bảng hàng cho đội cộng tác viên, trên website này và trong các bài đăng nhóm cư dân Lumi mỗi ngày.', sections, heroPhoto: 'bien-hieu-lumi-signature', active: '/chu-nha-ky-gui/' });
@@ -535,7 +608,7 @@ function enPage(all) {
   const s = stat(rent);
   const types = ['1PN', '2PN', '3PN'].filter(k => rent.some(x => x.type === k));
   const enCard = x => `<article class="card" data-id="${esc(x.id)}" data-rent="1" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}"><a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${x.imgs[0] ? `<img src="${x.imgs[0].replace('w1280', 'w600')}" alt="" loading="lazy" width="600" height="450">` : `<span class="noimg">${logoSvg()}</span>`}<span class="tags">${x.real ? '<span class="tag tag-real">Real photos</span>' : ''}${x.intKey === 'full' ? '<span class="tag tag-full">Furnished</span>' : ''}</span></a><div class="card-body"><p class="price">${x.price ? `${trEn(x.price)}M VND/month` : 'Contact'}</p><h3><a href="${x.url}">${x.t.en} · Tower ${x.tower}</a></h3><ul class="facts">${x.area ? `<li>${I.area}${x.area} m²</li>` : ''}${x.intKey ? `<li>${I.sofa}${INTERIORS[x.intKey].en}</li>` : ''}</ul><p class="code">Code ${esc(x.id)}</p></div></article>`;
-  const body = `<section class="page-hero has-photo">${pic(HERO, { sizes: '100vw', cls: 'ph-bg', eager: true, alt: '' })}<div class="wrap"><h1>Lumi Hanoi apartments for rent</h1><p class="lead"><b>${s.n} apartments</b> available now at Lumi Hanoi (CapitaLand), Thang Long Avenue, West Hanoi. Rents from ${trEn(s.min)}M to ${trEn(s.max)}M VND per month. Listings sync with our live inventory every minute.</p>
+  const body = `<section class="page-hero has-photo">${pic(HERO, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}<div class="wrap"><h1>Lumi Hanoi apartments for rent</h1><p class="lead"><b>${s.n} apartments</b> available now at Lumi Hanoi (CapitaLand), Thang Long Avenue, West Hanoi. Rents from ${trEn(s.min)}M to ${trEn(s.max)}M VND per month. Listings sync with our live inventory every minute.</p>
 <p class="cta-row"><a class="btn btn-zalo" href="${ZALO}" rel="nofollow">${I.chat}Message on Zalo</a> <a class="btn btn-ghost" href="tel:${PHONE_INTL}">${I.phone}Call ${PHONE_INTL}</a></p></div></section>
 <section class="wrap en-sec"><h2>Rent by apartment type</h2>${priceTable(types.map(t => { const st = stat(rent.filter(x => x.type === t)); return [TYPES[t].en, st.n, `${trEn(st.min)}M`, `<b>${trEn(st.med)}M</b>`, `${trEn(st.max)}M`]; }), ['', 'Units', 'From', 'Median', 'Up to'])}<p class="muted">Monthly rent in million VND as listed by owners; final price is negotiable.</p></section>
 <section class="listing wrap" id="danh-sach"><h2>Available apartments</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify({ rent: 1, noAdd: 1 }))}">${rent.map(enCard).join('')}</div><p class="more-wrap"><button type="button" class="btn btn-line" id="more" hidden>Show more</button></p></section>
@@ -575,15 +648,16 @@ for (const [ik, inf] of Object.entries(INTERIORS)) { const l = rent.filter(x => 
 for (const k of typeKeys) for (const [ik, inf] of Object.entries(INTERIORS)) { const l = rent.filter(x => x.type === k && x.intKey === ik); if (l.length >= MIN_PAGE) pages.push({ kind: 'ti', k, ik, url: `/cho-thue/${TYPES[k].slug}/${inf.slug}/`, label: `${TYPES[k].code.toUpperCase()} ${inf.name}`, list: l }); }
 for (const b of BANDS) { const l = rent.filter(x => x.price >= b.min && x.price <= b.max); if (l.length >= MIN_PAGE) pages.push({ kind: 'band', b, url: `/cho-thue/${b.slug}/`, label: `Giá ${b.label}`, list: l }); }
 
+QUICK = () => `<span>Tìm nhanh:</span>${pages.filter(p => ['type', 'int', 'band'].includes(p.kind)).map(p => `<a href="${p.url}">${esc(p.label)}</a>`).join('')}`;
 FOOT_LINKS = `<div class="foot-col"><p class="foot-h">Thuê theo loại căn</p>${pages.filter(p => ['type', 'int', 'band'].includes(p.kind)).map(p => `<a href="${p.url}">${esc(p.label)}</a>`).join('')}</div>
 <div class="foot-col"><p class="foot-h">Thuê theo tòa</p>${pages.filter(p => p.kind === 'tower').map(p => `<a href="${p.url}">Căn hộ ${esc(p.label)}</a>`).join('')}<a href="/cac-toa/">So sánh các tòa</a></div>
-<div class="foot-col"><p class="foot-h">Thông tin</p><a href="/bang-gia-thue-lumi-ha-noi/">Bảng giá thuê ${MONTH_LABEL}</a><a href="/kinh-nghiem-thue-can-ho-lumi/">Kinh nghiệm thuê</a><a href="/tien-ich-lumi-ha-noi/">Tiện ích Lumi</a><a href="/mua-ban/">Mua bán căn hộ</a><a href="/chu-nha-ky-gui/">Chủ nhà ký gửi</a><a href="/en/" lang="en">Lumi Hanoi for rent (English)</a></div>`;
+<div class="foot-col"><p class="foot-h">Thông tin</p><a href="/bang-gia-thue-lumi-ha-noi/">Bảng giá thuê ${MONTH_LABEL}</a><a href="/kinh-nghiem-thue-can-ho-lumi/">Kinh nghiệm thuê</a><a href="/tien-ich-lumi-ha-noi/">Tiện ích Lumi</a><a href="/xung-quanh-lumi-ha-noi/">Vị trí, xung quanh Lumi</a><a href="/so-sanh-can-1pn-2pn-3pn-lumi/">So sánh 1PN, 2PN, 3PN</a><a href="/mua-ban/">Mua bán căn hộ</a><a href="/chu-nha-ky-gui/">Chủ nhà ký gửi</a><a href="/lien-he/">Liên hệ</a><a href="/en/" lang="en">Lumi Hanoi for rent (English)</a></div>`;
 
 write('index.html', homePage(all, raw)); add('/', TODAY, '1.0', [`${SITE}/img/lumi/${HERO.f}.jpg`]);
 
 const PAGE_PHOTO = { type: { '1PN': 'phong-sinh-hoat-cong-dong-lumi', '2PN': 'ho-boi-ngoai-troi-lumi-signature', '3PN': 'ho-boi-bac-thang-lumi-ha-noi' }, tower: 'thap-lumi-hanoi', band: 'san-tam-nang-ho-boi-lumi' };
 for (const p of pages) {
-  let h1, what, title, desc, crumbs, scope, related = [], filterOpts = {}, heroPhoto, faq = [];
+  let h1, what, title, desc, crumbs, scope, related = [], filterOpts = {}, heroPhoto, faq = [], extra = '';
   const s = stat(p.list);
   const rng = `${tr(s.min)}–${tr(s.max)} triệu`;
   if (p.kind === 'type') {
@@ -597,6 +671,8 @@ for (const p of pages) {
     title = `Cho thuê căn hộ tòa ${p.t} Lumi Hà Nội – ${s.n} căn, ${rng} | ${BRAND}`; desc = `${s.n} căn hộ cho thuê tòa ${p.t} Lumi Hà Nội: ${uniq(p.list.map(x => x.type)).join(', ')}. Giá ${rng}/tháng, ảnh và mã căn rõ ràng. Zalo ${PHONE_FMT}.`;
     crumbs = [['Trang chủ', '/'], ['Các tòa', '/cac-toa/'], [`Tòa ${p.t}`, p.url]]; scope = { rent: 1, tower: p.t }; filterOpts = { noTower: true };
     related = pages.filter(q => q.kind === 'tt' && q.t === p.t).map(q => [q.url, q.label]).concat(pages.filter(q => q.kind === 'tower' && q.t !== p.t).map(q => [q.url, q.label]));
+    extra = towerSummary(p.t, p.list);
+    faq = [[`Thuê căn hộ tòa ${p.t} Lumi giá bao nhiêu?`, `Theo bảng hàng hiện tại, ${s.n} căn ở tòa ${p.t} có giá từ ${tr(s.min)} đến ${tr(s.max)} triệu/tháng, mức giữa ${tr(s.med)} triệu.`], [`Tòa ${p.t} có những loại căn nào đang cho thuê?`, Object.keys(TYPES).filter(k => p.list.some(x => x.type === k)).map(k => `${TYPES[k].short}: ${p.list.filter(x => x.type === k).length} căn`).join('; ') + '.']];
   } else if (p.kind === 'tt') {
     const T = TYPES[p.k]; h1 = `Cho thuê ${T.name} tòa ${p.t} Lumi Hà Nội`; what = `${T.name} cho thuê ở tòa ${p.t}`; heroPhoto = PAGE_PHOTO.tower;
     title = `Thuê ${T.name} tòa ${p.t} Lumi – ${s.n} căn, ${rng} | ${BRAND}`; desc = `${s.n} ${T.name} cho thuê tòa ${p.t} Lumi Hà Nội, giá ${rng}/tháng. Ảnh, diện tích, hướng, nội thất từng căn. Zalo ${PHONE_FMT}.`;
@@ -615,8 +691,9 @@ for (const p of pages) {
     h1 = `Căn hộ Lumi Hà Nội cho thuê giá ${p.b.label}/tháng`; what = `căn giá ${p.b.label}`; heroPhoto = PAGE_PHOTO.band;
     title = `Căn hộ Lumi Hà Nội cho thuê giá ${p.b.label} – ${s.n} căn | ${BRAND}`; desc = `${s.n} căn hộ cho thuê tại Lumi Hà Nội giá ${p.b.label}/tháng: ${uniq(p.list.map(x => x.type)).join(', ')}. Ảnh thật, mã căn rõ ràng. Zalo ${PHONE_FMT}.`;
     crumbs = [['Trang chủ', '/'], [`Giá ${p.b.label}`, p.url]]; scope = { rent: 1, pmin: p.b.min, pmax: p.b.max }; related = pages.filter(q => q.kind === 'band' && q !== p).map(q => [q.url, q.label]);
+    faq = [[`Thuê căn hộ Lumi ${p.b.label} được loại căn nào?`, Object.keys(TYPES).filter(k => p.list.some(x => x.type === k)).map(k => `${TYPES[k].short}: ${p.list.filter(x => x.type === k).length} căn`).join('; ') + `, tính theo bảng hàng ngày ${DATE_LABEL}.`]];
   }
-  write(p.url.slice(1) + 'index.html', listPage({ list: p.list, scope, h1, crumbs, canonical: p.url, title, desc, what, related, faq, filterOpts, heroPhoto }));
+  write(p.url.slice(1) + 'index.html', listPage({ list: p.list, scope, h1, crumbs, canonical: p.url, title, desc, what, related, faq, filterOpts, heroPhoto, extra }));
   add(p.url, lastUpd(p.list), p.kind === 'type' || p.kind === 'tower' ? '0.9' : '0.8');
 }
 
@@ -629,6 +706,10 @@ write('bang-gia-thue-lumi-ha-noi/index.html', pricePage(all)); add('/bang-gia-th
 write('kinh-nghiem-thue-can-ho-lumi/index.html', guidePage(all)); add('/kinh-nghiem-thue-can-ho-lumi/', TODAY, '0.7');
 write('tien-ich-lumi-ha-noi/index.html', amenityPage()); add('/tien-ich-lumi-ha-noi/', TODAY, '0.7', PHOTOS.map(p => `${SITE}/img/lumi/${p.f}.jpg`));
 write('chu-nha-ky-gui/index.html', ownerPage()); add('/chu-nha-ky-gui/', TODAY, '0.5');
+write('xung-quanh-lumi-ha-noi/index.html', areaPage()); add('/xung-quanh-lumi-ha-noi/', TODAY, '0.7');
+write('so-sanh-can-1pn-2pn-3pn-lumi/index.html', comparePage(all)); add('/so-sanh-can-1pn-2pn-3pn-lumi/', TODAY, '0.7');
+write('lien-he/index.html', contactPage()); add('/lien-he/', TODAY, '0.5');
+write('feed.xml', feed(all));
 write('en/index.html', enPage(all)); add('/en/', TODAY, '0.8');
 write('da-luu/index.html', savedPage());
 write('can-ho/xem/index.html', layout({ title: `Căn hộ Lumi Hà Nội mới cập nhật | ${BRAND}`, desc: 'Căn hộ vừa thêm vào bảng hàng Lumi Hà Nội.', canonical: '/can-ho/xem/', noindex: true, body: `<article class="unit wrap" id="dyn-unit"><p class="u-hint">Đang tải thông tin căn…</p></article>` }));
@@ -650,7 +731,7 @@ const SM_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://w
 write('sitemap-trang.xml', SM_HEAD + urls.filter(x => !x.u.startsWith('/can-ho/')).map(smUrl).join('\n') + '\n</urlset>\n');
 write('sitemap-can-ho.xml', SM_HEAD + urls.filter(x => x.u.startsWith('/can-ho/')).map(smUrl).join('\n') + '\n</urlset>\n');
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n<sitemap><loc>${SITE}/sitemap-trang.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n<sitemap><loc>${SITE}/sitemap-can-ho.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n</sitemapindex>\n`);
-write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /da-luu/\nDisallow: /can-ho/xem/\n\nSitemap: ${SITE}/sitemap.xml\n`);
+write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /da-luu/\nDisallow: /can-ho/xem/\nDisallow: /data/\n\nSitemap: ${SITE}/sitemap.xml\n`);
 const st = stat(rent);
 write('llms.txt', `# ${BRAND} (canholumi.com)\n\n> Danh sách căn hộ cho thuê và mua bán tại dự án Lumi Hà Nội (Lumi Hanoi, CapitaLand Development), Đại lộ Thăng Long, Hà Nội. Dữ liệu lấy từ bảng hàng, tự cập nhật. Liên hệ xem nhà: Zalo/điện thoại ${PHONE}.\n\n## Giá thuê hiện tại (${TODAY})\n${Object.keys(TYPES).map(k => [k, stat(rent.filter(x => x.type === k))]).filter(([, s]) => s.n).map(([k, s]) => `- ${TYPES[k].short}: ${s.n} căn, ${tr(s.min)}–${tr(s.max)} triệu/tháng, trung vị ${tr(s.med)} triệu`).join('\n')}\n- Tổng: ${st.n} căn cho thuê, ${sale.length} căn bán\n\n## Trang chính\n- [Căn hộ cho thuê](${SITE}/)\n- [Bảng giá thuê ${MONTH_LABEL}](${SITE}/bang-gia-thue-lumi-ha-noi/)\n- [Kinh nghiệm thuê căn hộ Lumi](${SITE}/kinh-nghiem-thue-can-ho-lumi/)\n- [Tiện ích Lumi Hà Nội](${SITE}/tien-ich-lumi-ha-noi/)\n${pages.filter(p => p.kind === 'type' || p.kind === 'tower').map(p => `- [${p.label}](${SITE}${p.url})`).join('\n')}\n- [Mua bán](${SITE}/mua-ban/)\n- [English](${SITE}/en/)\n`);
 write('manifest.webmanifest', JSON.stringify({ name: 'Căn Hộ Lumi – Cho thuê căn hộ Lumi Hà Nội', short_name: 'Căn Hộ Lumi', start_url: '/', display: 'standalone', background_color: '#0f2b33', theme_color: '#0f2b33', lang: 'vi', icons: [192, 512].map(s => ({ src: `/img/icon-${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));

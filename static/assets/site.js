@@ -7,12 +7,11 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
-  const SVG = {
-    area: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4Zm10 0h6v6h-2V6h-4V4ZM4 14h2v4h4v2H4v-6Zm14 0h2v6h-6v-2h4v-4Z"/></svg>',
-    dir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z"/></svg>',
-    sofa: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2a2 2 0 0 1 2 2v6h-2v2h-2v-2H7v2H5v-2H3v-6a2 2 0 0 1 2-2Zm2 0a2 2 0 0 1 2 2v2h6v-2a2 2 0 0 1 2-2V7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v2Z"/></svg>',
-    heart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 3 5 6.5 5c2 0 3.4 1.1 4.2 2.3h2.6C14.1 6.1 15.5 5 17.5 5 21 5 23.1 8.6 21.6 11.8 19.5 16.4 12 21 12 21Z"/></svg>',
-  };
+  const SVG = Object.fromEntries(['area', 'dir', 'sofa', 'heart'].map(k => [k, `<svg class="ic ic-${k}" aria-hidden="true"><use href="#i-${k}"/></svg>`]));
+
+
+  // ---------- Bản đồ (chỉ tải khi bấm) ----------
+  $$('[data-load-map]').forEach(b => b.addEventListener('click', () => { const m = b.closest('[data-map]'); m.innerHTML = `<iframe title="Bản đồ vị trí Lumi Hà Nội" src="${m.dataset.map}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="width:100%;height:100%;border:0"></iframe>`; }));
 
   // ---------- Menu ----------
   const mb = $('.menu-btn'), nav = $('#nav');
@@ -42,13 +41,15 @@
   function cardHtml(u, href, isNew) {
     const img = u.imgs[0];
     return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-new="${score(u)}${u.updated || ''}">
-<a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="" loading="lazy" width="600" height="450">` : '<span class="noimg"><span>Ảnh đang cập nhật</span></span>'}
+<a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(cap(u.t[2]))} tòa ${esc(u.tower)} Lumi Hà Nội" loading="lazy" width="600" height="450">` : '<span class="noimg"><span>Ảnh đang cập nhật</span></span>'}
 <span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
 <button class="save" type="button" data-save="${esc(u.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(u.id)}">${SVG.heart}</button>
 <div class="card-body"><p class="price" data-f="price">${esc(u.priceText)}</p><h3><a href="${href || u.url}">${esc(cap(u.t[1]))} · Tòa ${esc(u.tower)}</a></h3>
 <ul class="facts">${u.area ? `<li>${SVG.area}${num(u.area, 1)} m²</li>` : ''}${u.dir ? `<li>${SVG.dir}${esc(u.dir)}</li>` : ''}${u.intKey ? `<li>${SVG.sofa}${u.intKey === 'full' ? 'Full đồ' : 'Cơ bản'}</li>` : ''}</ul>
 <p class="code">Mã ${esc(u.id)}${u.goneAt ? ' · đã gỡ khỏi bảng hàng' : ''}</p></div></article>`;
   }
+
+  const scopeOk = (sc, u) => !!sc && !('rent' in sc && (sc.rent ? !u.isRent : u.isRent)) && (!sc.tower || u.tower === sc.tower) && (!sc.type || u.type === sc.type) && (!sc.int || u.intKey === sc.int) && (!sc.pmax || (u.price >= sc.pmin && u.price <= sc.pmax));
 
   // ---------- Lưu căn ----------
   let saved = store.get('lumi-saved', []);
@@ -90,6 +91,7 @@
   // ---------- Bộ lọc + phân trang ----------
   const form = $('#loc'), grid = $('#ds');
   const PAGE = 24; let shown = PAGE;
+  let archiveP = null; const getArchive = () => (archiveP ||= fetch('/data/archive.json').then(r => r.json()));
   const moreBtn = $('#more');
   function apply(updateUrl) {
     if (!grid) return;
@@ -110,6 +112,7 @@
     const dem = $('#dem'); if (dem) dem.textContent = n;
     const rong = $('#rong'); if (rong) rong.hidden = n > 0;
     if (moreBtn) { moreBtn.hidden = n <= shown; moreBtn.textContent = `Xem thêm ${Math.min(PAGE, n - shown)} căn (còn ${n - shown})`; }
+    const totalAll = +grid.dataset.total || 0; if (moreBtn && moreBtn.hidden && totalAll > cards.length && !(form && [...f].some(([k, v]) => v && k !== 'sort'))) { moreBtn.hidden = false; moreBtn.textContent = `Xem thêm căn (còn ${totalAll - cards.length})`; }
     const active = form && [...f].some(([k, v]) => v && k !== 'sort');
     const rs = $('[data-reset]'); if (rs) rs.hidden = !active;
     if (updateUrl && form) {
@@ -133,6 +136,23 @@
     }
     if (moreBtn) moreBtn.addEventListener('click', () => { shown += PAGE; apply(false); });
     apply(false);
+    // trang chỉ tải sẵn 48 căn; phần còn lại nạp sau khi trang đã hiện
+    const total = +grid.dataset.total || 0, sc = grid.dataset.scope ? JSON.parse(grid.dataset.scope) : null;
+    if (sc && total > grid.children.length) {
+      const loadRest = () => getArchive().then(d => {
+        const have = new Set([...grid.children].map(c => c.dataset.id));
+        const en = document.documentElement.lang === 'en';
+        const html = (d.units || []).map(norm).filter(u => u && !u.goneAt && !have.has(u.id) && scopeOk(sc, u)).map(u => cardHtml(u)).join('');
+        if (!en) grid.insertAdjacentHTML('beforeend', html);
+        apply(false); paintSaved();
+      }).catch(() => { });
+      let started = false; const once = () => { if (!started) { started = true; loadRest(); } };
+      form && form.addEventListener('change', once, { capture: true });
+      form && form.addEventListener('input', once, { capture: true });
+      if (moreBtn) { moreBtn.hidden = false; moreBtn.textContent = `Xem thêm căn (còn ${total - grid.children.length})`; moreBtn.addEventListener('click', once, { capture: true }); }
+      if (location.search) once();
+      if ('IntersectionObserver' in window && moreBtn) new IntersectionObserver((es, o) => { if (es.some(e => e.isIntersecting)) { o.disconnect(); once(); } }, { rootMargin: '600px' }).observe(moreBtn);
+    }
   }
 
   // ---------- Trang căn đã lưu ----------
@@ -154,7 +174,8 @@
   const scope = grid && grid.dataset.scope ? JSON.parse(grid.dataset.scope) : null;
   const unitEl = $('[data-unit]'), dyn = $('#dyn-unit');
   let busy = false;
-  const inScope = u => scope && !('rent' in scope && (scope.rent ? !u.isRent : u.isRent)) && (!scope.tower || u.tower === scope.tower) && (!scope.type || u.type === scope.type) && (!scope.int || u.intKey === scope.int) && (!scope.pmax || (u.price >= scope.pmin && u.price <= scope.pmax));
+  const inScope = u => scopeOk(scope, u);
+  const _unused = u => scope && !('rent' in scope && (scope.rent ? !u.isRent : u.isRent)) && (!scope.tower || u.tower === scope.tower) && (!scope.type || u.type === scope.type) && (!scope.int || u.intKey === scope.int) && (!scope.pmax || (u.price >= scope.pmin && u.price <= scope.pmax));
   function setPrice(root, u) { const p = root.querySelector('[data-f="price"]'); if (p && p.textContent !== u.priceText && !document.documentElement.lang.startsWith('en')) { p.textContent = u.priceText; p.classList.add('changed'); } }
   async function sync() {
     if (busy || document.hidden) return; busy = true;
@@ -170,8 +191,10 @@
           if (!u || !inScope(u)) { c.classList.add('gone'); continue; }
           c.classList.remove('gone'); c.dataset.price = u.price; setPrice(c, u);
         }
+        const partial = (+grid.dataset.total || 0) > grid.children.length;
+        const known = partial ? new Set(((await getArchive().catch(() => ({ units: [] }))).units || []).filter(x => !x.goneAt).map(x => String(x.id))) : new Set();
         if (!scope.noAdd) for (const u of units.values()) {
-          if (!inScope(u) || grid.querySelector(`[data-id="${CSS.escape(u.id)}"]`)) continue;
+          if (!inScope(u) || known.has(u.id) || grid.querySelector(`[data-id="${CSS.escape(u.id)}"]`)) continue;
           grid.insertAdjacentHTML('afterbegin', cardHtml(u, `/can-ho/xem/?id=${encodeURIComponent(u.id)}`, true));
         }
         apply(false); paintSaved();

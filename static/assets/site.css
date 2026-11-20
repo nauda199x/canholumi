@@ -1,7 +1,7 @@
 /* canholumi.com – giao diện v2 */
 :root{
   --night:#0f2b33; --night-2:#174250; --night-3:#215463;
-  --paper:#f3f6f5; --surface:#fff; --ink:#10292b; --ink-2:#4b6462; --ink-3:#7b918e; --mist:#dbe6e2; --mist-2:#e9f0ed;
+  --paper:#f3f6f5; --surface:#fff; --ink:#10292b; --ink-2:#4b6462; --ink-3:#5d7572; --mist:#dbe6e2; --mist-2:#e9f0ed;
   --lagoon:#0b7a68; --lagoon-d:#06594c; --lagoon-l:#e3f2ee;
   --lamp:#f4b23e; --lamp-l:#fff3d8; --zalo:#0068ff; --zalo-d:#0052cc;
   --r-s:8px; --r-m:14px; --r-l:22px;
@@ -88,7 +88,7 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
 .skyline .w{fill:#285864}
 .skyline .w.lit{fill:var(--lamp);animation:on .5s var(--d,0ms) both}
 .skyline .tn{fill:#fff;font:800 22px var(--f)}
-.skyline .tc{fill:#a9c8c3;font:500 15px var(--f)}
+.skyline .tc{fill:#fff;font:600 15px var(--f)}.skyline a{color:#fff}
 .skyline a:hover .body,.skyline a:focus-visible .body{fill:#27606e}
 .skyline a:focus-visible{outline:none}.skyline a:focus-visible .body{stroke:var(--lamp);stroke-width:3}
 @keyframes on{from{fill:#285864}to{fill:var(--lamp)}}
@@ -393,3 +393,20 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
   .u-actions .btn span{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* v2.1 */
+.quick{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;padding-top:1.6rem;font-size:.92rem}
+.quick span{color:var(--ink-3);margin-right:.2rem}
+.quick a{text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--mist);padding:.32em .85em;border-radius:999px}
+.quick a:hover{border-color:var(--lagoon);color:var(--lagoon-d)}
+.map-facade{position:relative}
+.map-facade img{width:100%;height:100%;object-fit:cover;filter:brightness(.6)}
+.map-cta{position:absolute;inset:auto 0 0 0;padding:1.2rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;color:#fff}
+.map-cta p{width:100%;margin:0;font-weight:600}
+.seo-block{padding-top:1rem;padding-bottom:1rem}
+.seo-block p{max-width:75ch}
+.contact{display:grid;grid-template-columns:1fr 1fr;gap:2rem;padding-top:2rem;padding-bottom:2rem;align-items:start}
+.nap{background:var(--surface);border-radius:var(--r-m);padding:1.5rem;box-shadow:var(--sh)}
+.nap-name{font-weight:800;font-size:1.2rem}
+.foot address{font-style:normal;line-height:1.7}
+@media (max-width:860px){.contact{grid-template-columns:1fr}}

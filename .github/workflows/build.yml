@@ -20,6 +20,9 @@ jobs:
           node-version: 22
       - name: Build từ bảng hàng
         run: node build.mjs
+      - name: Kiểm tra on-page SEO
+        run: node audit.mjs
+        continue-on-error: true
       - name: Kiểm tra dữ liệu có đổi không
         id: diff
         run: |
