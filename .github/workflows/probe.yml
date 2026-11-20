@@ -12,7 +12,7 @@ jobs:
       - run: |
           pip install -q gdown pillow
           mkdir -p raw && cd raw
-          gdown --folder "https://drive.google.com/drive/folders/1BX4lPtK6OkaeGIb_h5r-q8Kvpp1QO4ux" -O . --remaining-ok 2>&1 | tail -30 > ../gd.log || true
+          gdown --folder "https://drive.google.com/drive/folders/1BX4lPtK6OkaeGIb_h5r-q8Kvpp1QO4ux" -O . 2>&1 | tail -30 > ../gd.log || true
           cd ..
           mkdir -p photos-src
           python3 - <<'PY'
@@ -38,3 +38,4 @@ jobs:
           git rm -q .github/workflows/probe.yml
           git checkout -b photos-src
           git add photos-src; git commit -qm "photos from drive"; git push -f origin photos-src
+# retry
