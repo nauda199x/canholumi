@@ -1,0 +1,18 @@
+name: probe
+on:
+  push:
+    paths: ['.github/workflows/probe.yml']
+permissions:
+  contents: write
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p probe
+          { echo "== API GET with Origin"; curl -sS -D - -o /dev/null -H "Origin: https://canholumi.com" "https://lumihanoi.pages.dev/api/listings"; 
+            echo "== API OPTIONS"; curl -sS -D - -o /dev/null -X OPTIONS -H "Origin: https://canholumi.com" -H "Access-Control-Request-Method: GET" "https://lumihanoi.pages.dev/api/listings";
+            echo "== gviz"; curl -sS -D - -o /dev/null "https://docs.google.com/spreadsheets/d/1Buw_vjB_2x8KExje34lqmJKEFzCUM79LOmcvCVWw-yQ/gviz/tq?tqx=out:json&gid=676176071"; } > probe/out.txt 2>&1
+          git config user.name bot; git config user.email bot@canholumi.com
+          git add probe; git commit -m probe; git push
