@@ -435,3 +435,6 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
 @media (max-width:560px){.int{font-size:.8rem}.card-media .fillnote{font-size:.66rem}}
 .f-toggle{white-space:nowrap;flex:none}
 @media (max-width:860px){.f-sel{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:start}.f-sel .sel{flex:none}}
+.logo-img{height:44px;width:auto;display:block}
+.foot-brand img{height:56px;width:auto;display:block}
+@media (max-width:560px){.logo-img{height:38px}}

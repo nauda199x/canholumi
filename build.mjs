@@ -164,7 +164,7 @@ ${alt ? alt.map(([l, u]) => `<link rel="alternate" hreflang="${l}" href="${SITE}
 ${modified ? `<meta property="article:modified_time" content="${modified}">` : ''}
 <meta name="theme-color" content="#0f2b33">
 <meta name="format-detection" content="telephone=no">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/img/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/img/icon-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://drive.google.com">
@@ -179,7 +179,7 @@ ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replac
 ${SPRITE}
 <a class="skip" href="#noi-dung">${lang === 'en' ? 'Skip to content' : 'Bỏ qua menu'}</a>
 <header class="top">
-  <a class="logo" href="${lang === 'en' ? '/en/' : '/'}" aria-label="${BRAND} – trang chủ">${logoSvg()}<span>Căn Hộ <b>Lumi</b></span></a>
+  <a class="logo" href="${lang === 'en' ? '/en/' : '/'}" aria-label="${BRAND} – trang chủ"><img class="logo-img" src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi – Căn Hộ Lumi" width="122" height="60"><span class="sr">Căn Hộ Lumi</span></a>
   <nav class="nav" id="nav" aria-label="Menu chính">${NAV.map(([h, l]) => `<a href="${h}"${active === h ? ' aria-current="page"' : ''}>${l}</a>`).join('')}<a href="/en/" lang="en"${active === '/en/' ? ' aria-current="page"' : ''}>English</a></nav>
   <a class="saved-link" href="/da-luu/" aria-label="Căn đã lưu">${I.heart}<span class="saved-n" data-saved-count hidden>0</span></a>
   <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow" aria-label="Nhắn Zalo ${PHONE_FMT}">${I.chat}<span>Zalo ${PHONE_FMT}</span></a>
@@ -191,7 +191,7 @@ ${body}
 <footer class="foot">
   <div class="foot-in">
     <div class="foot-col foot-about">
-      <p class="foot-brand">${logoSvg()} Căn Hộ Lumi</p>
+      <p class="foot-brand"><img src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi – Căn Hộ Lumi" width="122" height="60" loading="lazy"></p>
       <p>Cho thuê và mua bán căn hộ Lumi Hà Nội (Lumi Hanoi – CapitaLand), Đại lộ Thăng Long. Danh sách căn lấy trực tiếp từ bảng hàng và tự cập nhật.</p>
       <address>Lumi Hanoi, Đại lộ Thăng Long, phường Tây Mỗ, Hà Nội<br><a href="tel:${PHONE}">${PHONE_FMT}</a> · <a href="${ZALO}" rel="nofollow">Zalo</a></address>
     </div>
