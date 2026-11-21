@@ -433,3 +433,5 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
 .f-done{display:block}.f-done .btn{width:100%}
 }
 @media (max-width:560px){.int{font-size:.8rem}.card-media .fillnote{font-size:.66rem}}
+.f-toggle{white-space:nowrap;flex:none}
+@media (max-width:860px){.f-sel{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:start}.f-sel .sel{flex:none}}

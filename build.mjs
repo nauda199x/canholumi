@@ -88,7 +88,7 @@ function prepare(raw) {
       intKey: /full/i.test(i) ? 'full' : /cơ bản/i.test(i) ? 'basic' : '',
       price: Number(x.price) || 0, updated: parseVnDate(x.updatedDate),
       img: (x.images || []).map(u => (/^https:\/\/drive\.google\.com\/thumbnail\?id=([\w-]+)/.exec(u) || [])[1]).filter(Boolean).slice(0, 12),
-      real: x.mediaStatus === 'verified',
+      real: x.mediaStatus === 'verified' && (x.images || []).some(u => /^https:\/\/drive\.google\.com\/thumbnail\?id=/.test(u)),
     };
   });
 }

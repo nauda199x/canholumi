@@ -31,7 +31,7 @@
     const updated = x.updated || (/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(x.updatedDate || '')) || []).slice(1).reverse().map(v => v.padStart(2, '0')).join('-');
     const slug = String(x.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return {
-      id: String(x.id), isRent, type: x.type, t, tower, price, intKey, dir, area: Number(x.area) || 0, updated, real: x.real ?? x.mediaStatus === 'verified',
+      id: String(x.id), isRent, type: x.type, t, tower, price, intKey, dir, area: Number(x.area) || 0, updated, real: (x.real ?? x.mediaStatus === 'verified') && ids.length > 0,
       imgs: ids.map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1280`),
       priceText: !price ? 'Liên hệ' : isRent ? `${num(price / 1e6, 1)} triệu/tháng` : `${num(price / 1e9, 3)} tỷ`,
       url: `/can-ho/${isRent ? 'cho-thue' : 'ban'}-can-ho-lumi-${t[0]}-${tower.toLowerCase()}-${slug}/`, goneAt: x.goneAt,
