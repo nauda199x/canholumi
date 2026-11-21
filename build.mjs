@@ -243,7 +243,7 @@ function card(x, i = 9) {
 <div class="card-body">
 <p class="price" data-f="price">${esc(x.priceText)}</p>
 <h3><a href="${x.url}">${esc(cap(x.t.short))} · Tòa ${x.tower}</a></h3>
-<ul class="facts">${x.area ? `<li>${I.area}${m2(x.area)}</li>` : ''}${x.dir ? `<li>${I.dir}${esc(x.dir)}</li>` : ''}${x.interior ? `<li>${I.sofa}${x.intKey === 'full' ? 'Full đồ' : 'Cơ bản'}</li>` : ''}</ul>
+<ul class="facts">${x.area ? `<li>${I.area}${m2(x.area)}</li>` : ''}${x.dir ? `<li>${I.dir}${esc(x.dir)}</li>` : ''}${x.interior ? `<li>${I.sofa}${x.intKey === 'full' ? 'Full nội thất' : 'Cơ bản'}</li>` : ''}</ul>
 <p class="code">Mã ${esc(x.id)}</p>
 </div></article>`;
 }
@@ -406,8 +406,9 @@ function homePage(all, meta) {
   <div class="loc-txt">
     <h2>Vị trí Lumi Hà Nội</h2>
     <p>Lumi Hanoi là dự án căn hộ của CapitaLand Development nằm sát Đại lộ Thăng Long, kết nối Vành đai 3.5, phía Tây Hà Nội. Phân khu Lumi Signature bắt đầu bàn giao từ tháng 9/2026.</p>
-    <ul class="ticks"><li>${I.check}Mặt Đại lộ Thăng Long, đi trung tâm và các khu văn phòng phía Tây</li><li>${I.check}Kết nối Vành đai 3.5</li><li>${I.check}Nội khu với hồ bơi, công viên, sân thể thao</li></ul>
-    <p><a href="/kinh-nghiem-thue-can-ho-lumi/">Kinh nghiệm thuê căn hộ Lumi</a> · <a href="/bang-gia-thue-lumi-ha-noi/">Bảng giá thuê ${MONTH_LABEL}</a></p>
+    <ul class="ticks"><li>${I.check}Mặt Đại lộ Thăng Long, khoảng 20 phút tới trung tâm, 40 phút tới sân bay Nội Bài</li><li>${I.check}Chợ Miêu Nha khoảng 700 m, mầm non Tây Mỗ khoảng 1 km, tiểu học Lý Nam Đế khoảng 1,1 km</li><li>${I.check}Cách Vinhomes Smart City khoảng 3,1 km; kết nối Vành đai 3.5</li><li>${I.check}Nội khu với hồ bơi, công viên, sân thể thao</li></ul>
+    <p class="muted">Thời gian di chuyển theo CapitaLand, khoảng cách theo CafeLand; thực tế tuỳ giờ và tuyến đường.</p>
+    <p><a href="/xung-quanh-lumi-ha-noi/">Xung quanh Lumi có gì?</a> · <a href="/kinh-nghiem-thue-can-ho-lumi/">Kinh nghiệm thuê căn hộ Lumi</a> · <a href="/bang-gia-thue-lumi-ha-noi/">Bảng giá thuê ${MONTH_LABEL}</a></p>
   </div>
   ${mapFacade()}
 </section>
@@ -447,6 +448,25 @@ function unitPage(x, all) {
     x.price ? `Giá ${x.isRent ? 'thuê' : 'bán'} theo bảng hàng: ${x.priceText}${cmp ? `, ${cmp}` : ''}.` : '',
     `Gửi mã ${x.id} qua Zalo ${PHONE_FMT} để được báo giá mới nhất và hẹn giờ xem nhà.`,
   ].filter(Boolean).join(' ');
+  // Bối cảnh trong tòa: giá/m² so với cùng loại, số căn cùng loại cùng tòa, cùng hướng.
+  let towerCtx = '';
+  if (x.isRent && !gone) {
+    const sameTT = all.filter(y => y.isRent && y.tower === x.tower && y.type === x.type && y.price);
+    const sameDir = x.dir ? all.filter(y => y.isRent && y.dir === x.dir && y.price).length : 0;
+    const myPpm = x.price && x.area ? x.price / x.area : 0;
+    const parts = [];
+    if (myPpm && ps.ppm) {
+      const d = (myPpm - ps.ppm) / ps.ppm;
+      parts.push(`Tính theo diện tích, căn này khoảng <b>${kpm(myPpm)} nghìn đồng/m²/tháng</b>, ${Math.abs(d) < 0.03 ? 'ngang' : d < 0 ? `thấp hơn ${Math.round(-d * 100)}% so với` : `cao hơn ${Math.round(d * 100)}% so với`} mức giữa ${kpm(ps.ppm)}k/m² của các căn ${esc(x.t.short)} ở Lumi.`);
+    }
+    if (sameTT.length > 1) {
+      const st = stat(sameTT);
+      const link = sameTT.length >= MIN_PAGE ? `/cho-thue/toa-${x.tower.toLowerCase()}/${x.t.slug}/` : `/cho-thue/toa-${x.tower.toLowerCase()}/`;
+      parts.push(`Tòa ${x.tower} hiện có <a href="${link}">${sameTT.length} căn ${esc(x.t.short)}</a> đang cho thuê, giá từ ${tr(st.min)} đến ${tr(st.max)} triệu/tháng.`);
+    } else parts.push(`Đây là căn ${esc(x.t.short)} duy nhất của tòa ${x.tower} đang có trên bảng hàng. <a href="/cho-thue/toa-${x.tower.toLowerCase()}/">Xem các căn khác tòa ${x.tower}</a>.`);
+    if (sameDir > 1) parts.push(`Toàn dự án có ${sameDir} căn cho thuê cùng hướng ban công ${esc(x.dir)}.`);
+    towerCtx = `<section><h2>Căn này trong tòa ${x.tower}</h2><p>${parts.join(' ')}</p></section>`;
+  }
   const pos = x.price && ps.n >= 3 && ps.max > ps.min ? Math.max(0, Math.min(100, (x.price - ps.min) / (ps.max - ps.min) * 100)) : null;
   const imgs = x.imgs;
   const gallery = imgs.length ? `<div class="gal gal-${Math.min(imgs.length, 5)}">${imgs.slice(0, 5).map((u, i) => `<button type="button" class="gal-i" data-open="${i}" aria-label="Xem ảnh ${i + 1} trên ${imgs.length}"><img src="${i ? u.replace('w1280', 'w800') : u}" alt="${esc(x.title)} – ảnh ${i + 1}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async" width="1280" height="960">${i === 4 && imgs.length > 5 ? `<span class="gal-more">+${imgs.length - 5} ảnh</span>` : ''}</button>`).join('')}</div>
@@ -466,6 +486,7 @@ function unitPage(x, all) {
       <section><h2>Thông tin căn</h2><dl class="u-facts">${rows.map(([k, v, ic]) => `<div>${ic}<dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></section>
       <section><h2>Mô tả</h2><p>${esc(descr)}</p></section>
       ${pos !== null ? `<section><h2>Giá so với các căn ${esc(x.t.short)} khác</h2><div class="pbar"><div class="pbar-track"><span class="pbar-med" style="left:${((ps.med - ps.min) / (ps.max - ps.min) * 100).toFixed(1)}%"></span><span class="pbar-me" style="left:${pos.toFixed(1)}%"><b>Căn này</b></span></div><div class="pbar-lbl"><span>${tr(ps.min)} tr</span><span>Mức giữa ${tr(ps.med)} tr</span><span>${tr(ps.max)} tr</span></div></div><p class="muted">So với ${ps.n} căn ${x.t.short} đang ${x.isRent ? 'cho thuê' : 'bán'} trên bảng hàng.</p></section>` : ''}
+      ${towerCtx}
       <section><h2>Tiện ích nội khu</h2><div class="u-amen">${[['ho-boi-ngoai-troi-lumi-signature', 'Hồ bơi ngoài trời'], ['phong-gym-lumi-ha-noi', 'Phòng gym'], ['khu-vui-choi-tre-em-lumi', 'Khu trẻ em'], ['sanh-lounge-lumi-ha-noi', 'Sảnh lounge']].map(([f, c]) => `<figure>${pic(photo(f), { sizes: '(max-width: 700px) 50vw, 15vw' })}<figcaption>${c}</figcaption></figure>`).join('')}</div><p><a href="/tien-ich-lumi-ha-noi/">Xem tất cả tiện ích Lumi Hà Nội</a></p></section>
     </div>
     <aside class="u-side"><div class="u-card">
@@ -745,5 +766,5 @@ write('data/id-url.json', JSON.stringify(Object.fromEntries(all.map(x => [String
 write('data/urls.txt', urls.map(x => SITE + x.u).join('\n') + '\n');
 fs.writeFileSync(path.join(OUT, 'CNAME'), 'canholumi.com\n');
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
-fs.writeFileSync(path.join(OUT, 'data-hash.txt'), sha(JSON.stringify(cur) + ASSET_VER + fs.readFileSync('build.mjs', 'utf8') + JSON.stringify(gone.map(g => g.id))) + '\n');
+fs.writeFileSync(path.join(OUT, 'data-hash.txt'), sha(JSON.stringify(cur) + ASSET_VER + GA_ID + fs.readFileSync('build.mjs', 'utf8') + JSON.stringify(gone.map(g => g.id))) + '\n');
 console.log(`OK: ${all.length} căn (${rent.length} thuê, ${sale.length} bán), ${goneUnits.length} căn đã gỡ lưu trữ, ${pages.length} trang danh sách, ${urls.length} URL trong sitemap`);

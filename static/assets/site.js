@@ -45,7 +45,7 @@
 <span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
 <button class="save" type="button" data-save="${esc(u.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(u.id)}">${SVG.heart}</button>
 <div class="card-body"><p class="price" data-f="price">${esc(u.priceText)}</p><h3><a href="${href || u.url}">${esc(cap(u.t[1]))} · Tòa ${esc(u.tower)}</a></h3>
-<ul class="facts">${u.area ? `<li>${SVG.area}${num(u.area, 1)} m²</li>` : ''}${u.dir ? `<li>${SVG.dir}${esc(u.dir)}</li>` : ''}${u.intKey ? `<li>${SVG.sofa}${u.intKey === 'full' ? 'Full đồ' : 'Cơ bản'}</li>` : ''}</ul>
+<ul class="facts">${u.area ? `<li>${SVG.area}${num(u.area, 1)} m²</li>` : ''}${u.dir ? `<li>${SVG.dir}${esc(u.dir)}</li>` : ''}${u.intKey ? `<li>${SVG.sofa}${u.intKey === 'full' ? 'Full nội thất' : 'Cơ bản'}</li>` : ''}</ul>
 <p class="code">Mã ${esc(u.id)}${u.goneAt ? ' · đã gỡ khỏi bảng hàng' : ''}</p></div></article>`;
   }
 
