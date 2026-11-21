@@ -90,9 +90,17 @@
 
   // ---------- Bộ lọc + phân trang ----------
   const form = $('#loc'), grid = $('#ds');
-  const PAGE = 24; let shown = PAGE;
+  const PAGE = 24; let shown = PAGE; let pg = Math.max(1, +new URLSearchParams(location.search).get('trang') || 1);
   let archiveP = null; const getArchive = () => (archiveP ||= fetch('/data/archive.json').then(r => r.json()));
   const moreBtn = $('#more');
+  let pagerEl = null, needAll = null;
+  function renderPager(pages) {
+    if (!pagerEl) { pagerEl = document.createElement('nav'); pagerEl.className = 'pager'; pagerEl.setAttribute('aria-label', 'Chuyển trang'); (moreBtn ? moreBtn.parentNode : grid).insertAdjacentElement(moreBtn ? 'beforebegin' : 'afterend', pagerEl);
+      pagerEl.addEventListener('click', async e => { const b = e.target.closest('button[data-p]'); if (!b || b.disabled) return; pg = +b.dataset.p; if (needAll && grid.children.length < (+grid.dataset.total || 0)) { b.classList.add('wait'); await needAll(); } apply(true); grid.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }
+    pagerEl.hidden = pages <= 1; if (pages <= 1) { pagerEl.innerHTML = ''; return; }
+    const list = []; for (let i = 1; i <= pages; i++) if (i === 1 || i === pages || Math.abs(i - pg) <= 1) list.push(i); else if (list[list.length - 1] !== '…') list.push('…');
+    pagerEl.innerHTML = `<button type="button" data-p="${pg - 1}" ${pg === 1 ? 'disabled' : ''} aria-label="Trang trước">‹</button>` + list.map(i => i === '…' ? '<span>…</span>' : `<button type="button" data-p="${i}"${i === pg ? ' aria-current="page"' : ''}>${i}</button>`).join('') + `<button type="button" data-p="${pg + 1}" ${pg === pages ? 'disabled' : ''} aria-label="Trang sau">›</button>`;
+  }
   function apply(updateUrl) {
     if (!grid) return;
     const cards = [...grid.children];
@@ -106,18 +114,24 @@
       const d = c.dataset;
       const ok = !c.classList.contains('gone') && (!q || d.id.toLowerCase().includes(q)) && (!type || d.type === type) && (!tower || d.tower === tower) && (!int || d.int === int) && (!max || (Number(d.price) && Number(d.price) <= max)) && (!dt || (+d.area >= dMin && +d.area < dMax));
       c.hidden = !ok;
-      c.classList.toggle('more-hidden', ok && n >= shown);
+      c.classList.toggle('more-hidden', ok && (n < (pg - 1) * PAGE || n >= pg * PAGE));
       if (ok) n++;
     }
     const dem = $('#dem'); if (dem) dem.textContent = n;
     const rong = $('#rong'); if (rong) rong.hidden = n > 0;
-    if (moreBtn) { moreBtn.hidden = n <= shown; moreBtn.textContent = `Xem thêm ${Math.min(PAGE, n - shown)} căn (còn ${n - shown})`; }
-    const totalAll = +grid.dataset.total || 0; if (moreBtn && moreBtn.hidden && totalAll > cards.length && !(form && [...f].some(([k, v]) => v && k !== 'sort'))) { moreBtn.hidden = false; moreBtn.textContent = `Xem thêm căn (còn ${totalAll - cards.length})`; }
+    if (moreBtn) moreBtn.hidden = true;
+    const totalAll = +grid.dataset.total || 0;
+    const filtered = form && [...f].some(([k, v]) => v && k !== 'sort');
+    const count = !filtered && totalAll > cards.length ? totalAll : n;
+    const pages = Math.max(1, Math.ceil(count / PAGE));
+    if (pg > pages) { pg = pages; return apply(updateUrl); }
+    renderPager(pages);
     const active = form && [...f].some(([k, v]) => v && k !== 'sort');
     const rs = $('[data-reset]'); if (rs) rs.hidden = !active;
     if (updateUrl && form) {
       const p = new URLSearchParams();
       for (const [k, v] of f) if (v && !(k === 'sort' && v === 'new')) p.set(k, v);
+      if (pg > 1) p.set('trang', pg);
       history.replaceState(null, '', (p.toString() ? '?' + p : location.pathname) + location.hash);
     }
   }
@@ -129,12 +143,11 @@
         const el = form.elements[k]; if (!el) continue; any = true;
         if (el instanceof RadioNodeList) { for (const r of el) r.checked = r.value === v; } else el.value = v;
       }
-      form.addEventListener('change', () => { shown = PAGE; apply(true); });
-      form.addEventListener('input', e => { if (e.target.name === 'q') { shown = PAGE; apply(true); } });
-      const rs = $('[data-reset]'); if (rs) rs.addEventListener('click', () => { form.reset(); shown = PAGE; apply(true); });
+      form.addEventListener('change', () => { pg = 1; apply(true); });
+      form.addEventListener('input', e => { if (e.target.name === 'q') { pg = 1; apply(true); } });
+      const rs = $('[data-reset]'); if (rs) rs.addEventListener('click', () => { form.reset(); pg = 1; apply(true); });
       if (any && location.pathname === '/') setTimeout(() => $('#danh-sach')?.scrollIntoView(), 50);
     }
-    if (moreBtn) moreBtn.addEventListener('click', () => { shown += PAGE; apply(false); });
     apply(false);
     // trang chỉ tải sẵn 48 căn; phần còn lại nạp sau khi trang đã hiện
     const total = +grid.dataset.total || 0, sc = grid.dataset.scope ? JSON.parse(grid.dataset.scope) : null;
@@ -146,12 +159,11 @@
         if (!en) grid.insertAdjacentHTML('beforeend', html);
         apply(false); paintSaved();
       }).catch(() => { });
-      let started = false; const once = () => { if (!started) { started = true; loadRest(); } };
+      let loadP = null; const once = () => (loadP ||= loadRest()); needAll = once;
       form && form.addEventListener('change', once, { capture: true });
       form && form.addEventListener('input', once, { capture: true });
-      if (moreBtn) { moreBtn.hidden = false; moreBtn.textContent = `Xem thêm căn (còn ${total - grid.children.length})`; moreBtn.addEventListener('click', once, { capture: true }); }
       if (location.search) once();
-      if ('IntersectionObserver' in window && moreBtn) new IntersectionObserver((es, o) => { if (es.some(e => e.isIntersecting)) { o.disconnect(); once(); } }, { rootMargin: '600px' }).observe(moreBtn);
+      const pgr = document.querySelector('.pager'); if ('IntersectionObserver' in window && pgr) new IntersectionObserver((es, o) => { if (es.some(e => e.isIntersecting)) { o.disconnect(); once(); } }, { rootMargin: '400px' }).observe(pgr);
     }
   }
 

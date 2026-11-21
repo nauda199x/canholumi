@@ -267,8 +267,7 @@ const AREA_BANDS = [[0, 50, 'Dưới 50 m²'], [50, 60, '50–60 m²'], [60, 70,
 const areaOpts = list => AREA_BANDS.filter(([a, b]) => list.some(x => x.area >= a && x.area < b)).map(([a, b, l]) => `<option value="${a}-${b}">${l}</option>`).join('');
 const HTML_CAP = 48;
 const grid = (list, scope) => `<h2 class="sr">Danh sách căn</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}" data-total="${list.length}">${list.slice(0, HTML_CAP).map((x, i) => card(x, i)).join('')}</div>
-<p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. <a href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE_FMT}</a> để được báo khi có căn phù hợp.</p>
-<p class="more-wrap"><button type="button" class="btn btn-line" id="more" hidden>Xem thêm căn</button></p>`;
+<p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. <a href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE_FMT}</a> để được báo khi có căn phù hợp.</p>`;
 
 // ---------- Thống kê ----------
 function stat(list) {
