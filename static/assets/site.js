@@ -98,13 +98,13 @@
     const cards = [...grid.children];
     const f = form ? new FormData(form) : new FormData();
     const q = String(f.get('q') || '').trim().toLowerCase().replace(/\s+/g, '');
-    const type = f.get('type'), tower = f.get('tower'), int = f.get('int'), max = Number(f.get('max') || 0), sort = f.get('sort') || 'new';
+    const type = f.get('type'), tower = f.get('tower'), int = f.get('int'), max = Number(f.get('max') || 0), dt = String(f.get('dt') || ''), [dMin, dMax] = dt ? dt.split('-').map(Number) : [0, 0], sort = f.get('sort') || 'new';
     const by = { asc: (a, b) => (+a.dataset.price || 9e12) - (+b.dataset.price || 9e12), desc: (a, b) => +b.dataset.price - +a.dataset.price, area: (a, b) => +b.dataset.area - +a.dataset.area, new: (a, b) => (b.dataset.new || '').localeCompare(a.dataset.new || '') };
     cards.sort(by[sort] || by.new).forEach(c => grid.appendChild(c));
     let n = 0;
     for (const c of cards) {
       const d = c.dataset;
-      const ok = !c.classList.contains('gone') && (!q || d.id.toLowerCase().includes(q)) && (!type || d.type === type) && (!tower || d.tower === tower) && (!int || d.int === int) && (!max || (Number(d.price) && Number(d.price) <= max));
+      const ok = !c.classList.contains('gone') && (!q || d.id.toLowerCase().includes(q)) && (!type || d.type === type) && (!tower || d.tower === tower) && (!int || d.int === int) && (!max || (Number(d.price) && Number(d.price) <= max)) && (!dt || (+d.area >= dMin && +d.area < dMax));
       c.hidden = !ok;
       c.classList.toggle('more-hidden', ok && n >= shown);
       if (ok) n++;

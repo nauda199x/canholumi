@@ -241,7 +241,7 @@ function card(x, i = 9) {
 <span class="tags">${x.real ? '<span class="tag tag-real">Ảnh thật</span>' : x.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${x.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
 <button class="save" type="button" data-save="${esc(x.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(x.id)}">${I.heart}</button>
 <div class="card-body">
-<p class="price" data-f="price">${esc(x.priceText)}</p>
+<p class="price" data-f="price">${esc(x.priceText)}${!x.isRent && x.price && x.area ? `<small class="ppm"> · ≈ ${tr(x.price / x.area)} tr/m²</small>` : ''}</p>
 <h3><a href="${x.url}">${esc(cap(x.t.short))} · Tòa ${x.tower}</a></h3>
 <ul class="facts">${x.area ? `<li>${I.area}${m2(x.area)}</li>` : ''}${x.dir ? `<li>${I.dir}${esc(x.dir)}</li>` : ''}${x.interior ? `<li>${I.sofa}${x.intKey === 'full' ? 'Full nội thất' : 'Cơ bản'}</li>` : ''}</ul>
 <p class="code">Mã ${esc(x.id)}</p>
@@ -255,6 +255,7 @@ function filters(list, { noTower = false, noType = false, sale = false } = {}) {
   return `<form class="filters" id="loc" aria-label="Lọc căn hộ" onsubmit="return false">
 <div class="f-row f-top"><label class="f-q"><span class="sr">Tìm theo mã căn</span><input type="search" name="q" placeholder="Tìm mã căn, ví dụ ${esc(list[0]?.id || 'Thue2N.87')}" autocomplete="off"></label>
 <label class="sel"><span>Giá tối đa</span><select name="max"><option value="">Mọi mức giá</option>${prices.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
+<label class="sel"><span>Diện tích</span><select name="dt"><option value="">Mọi diện tích</option>${areaOpts(list)}</select></label>
 <label class="sel"><span>Sắp xếp</span><select name="sort"><option value="new">Ảnh thật trước</option><option value="asc">Giá thấp trước</option><option value="desc">Giá cao trước</option><option value="area">Diện tích lớn</option></select></label></div>
 ${!noType && types.length > 1 ? `<fieldset class="f-row"><legend class="f-label">Loại căn</legend>${chips('type', types.map(t => [t, TYPES[t].short]))}</fieldset>` : ''}
 ${!noTower && towers.length > 1 ? `<fieldset class="f-row"><legend class="f-label">Tòa</legend>${chips('tower', towers.map(t => [t, t]))}</fieldset>` : ''}
@@ -262,6 +263,8 @@ ${uniq(list.map(x => x.intKey).filter(Boolean)).length > 1 ? `<fieldset class="f
 <p class="result" aria-live="polite"><b id="dem">${list.length}</b> căn phù hợp <button type="button" class="reset" data-reset hidden>Xoá bộ lọc</button></p>
 </form>`;
 }
+const AREA_BANDS = [[0, 50, 'Dưới 50 m²'], [50, 60, '50–60 m²'], [60, 70, '60–70 m²'], [70, 80, '70–80 m²'], [80, 100, '80–100 m²'], [100, 999, 'Từ 100 m²']];
+const areaOpts = list => AREA_BANDS.filter(([a, b]) => list.some(x => x.area >= a && x.area < b)).map(([a, b, l]) => `<option value="${a}-${b}">${l}</option>`).join('');
 const HTML_CAP = 48;
 const grid = (list, scope) => `<h2 class="sr">Danh sách căn</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}" data-total="${list.length}">${list.slice(0, HTML_CAP).map((x, i) => card(x, i)).join('')}</div>
 <p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. <a href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE_FMT}</a> để được báo khi có căn phù hợp.</p>
@@ -300,12 +303,12 @@ ${extra}${faq.length ? faqHtml(faq) : ''}`;
 
 function towerSummary(t, list) {
   const s = stat(list);
-  const rows = Object.keys(TYPES).map(k => [k, list.filter(x => x.type === k)]).filter(([, l]) => l.length).map(([k, l]) => { const q = stat(l); return [cap(TYPES[k].short), q.n, `${tr(q.min)}–${tr(q.max)} tr`, `<b>${tr(q.med)} tr</b>`, q.ppm ? `${kpm(q.ppm)}k/m²` : '–']; });
+  const rows = Object.keys(TYPES).map(k => [k, list.filter(x => x.type === k)]).filter(([, l]) => l.length).map(([k, l]) => { const q = stat(l); return [cap(TYPES[k].short), q.n, `${tr(q.min)}–${tr(q.max)} tr`, `<b>${tr(q.med)} tr</b>`]; });
   const dirs = uniq(list.map(x => x.dir).filter(Boolean)).map(d => [d, list.filter(x => x.dir === d).length]).sort((a, b) => b[1] - a[1]);
   return `<section class="wrap seo-block"><h2>Tổng quan căn cho thuê tòa ${t}</h2>
-<p>Tòa ${t} hiện có ${s.n} căn trên bảng hàng${s.ppm ? `, giá thuê mức giữa khoảng ${kpm(s.ppm)} nghìn đồng/m²/tháng` : ''}. ${dirs.length ? `Hướng ban công: ${dirs.map(([d, n]) => `${esc(d)} ${n} căn`).join(', ')}.` : ''} ${s.full ? `${s.full} căn cho thuê kèm đầy đủ nội thất.` : ''}</p>
-${priceTable(rows, ['Loại căn', 'Số căn', 'Khoảng giá', 'Mức giữa', 'Giá/m²'])}
-<p class="muted">Giá/m² = giá thuê tháng chia diện tích, lấy mức giữa của các căn. Số liệu tự cập nhật theo bảng hàng.</p></section>`;
+<p>Tòa ${t} hiện có ${s.n} căn trên bảng hàng${s.n ? `, giá thuê mức giữa khoảng ${tr(s.med)} triệu/tháng` : ''}. ${dirs.length ? `Hướng ban công: ${dirs.map(([d, n]) => `${esc(d)} ${n} căn`).join(', ')}.` : ''} ${s.full ? `${s.full} căn cho thuê kèm đầy đủ nội thất.` : ''}</p>
+${priceTable(rows, ['Loại căn', 'Số căn', 'Khoảng giá', 'Mức giữa'])}
+<p class="muted">Mức giữa (trung vị): một nửa số căn rẻ hơn, một nửa đắt hơn. Số liệu tự cập nhật theo bảng hàng.</p></section>`;
 }
 // ---------- Đường chân trời (tòa) ----------
 function skyline(byTower) {
@@ -368,14 +371,9 @@ function homePage(all, meta) {
       <label><span>Loại căn</span><select name="type"><option value="">Tất cả</option>${types.map(t => `<option value="${t}">${TYPES[t].short}</option>`).join('')}</select></label>
       <label><span>Tòa</span><select name="tower"><option value="">Tất cả</option>${towers.map(t => `<option value="${t}">${t}</option>`).join('')}</select></label>
       <label><span>Giá tối đa</span><select name="max"><option value="">Mọi mức giá</option>${[8, 10, 12, 15, 20].map(v => `<option value="${v * 1e6}">${v} triệu</option>`).join('')}</select></label>
+      <label><span>Diện tích</span><select name="dt"><option value="">Mọi diện tích</option>${areaOpts(rent)}</select></label>
       <button class="btn btn-lamp" type="submit">Tìm căn</button>
     </form>
-  </div>
-</section>
-<section class="sky-band">
-  <div class="wrap sky-in">
-    <div class="sky-txt"><h2>Chọn tòa</h2><p>Mỗi ô sáng là một căn đang chờ người thuê. Bấm vào tòa để xem danh sách.</p><a href="/cac-toa/">So sánh các tòa</a></div>
-    ${skyline(byTower)}
   </div>
 </section>
 <section class="wrap prices" aria-label="Giá thuê theo loại căn">
@@ -416,7 +414,7 @@ ${faqHtml(faq)}
 <section class="wrap guides">
   <h2>Thông tin hữu ích</h2>
   <div class="g-grid">
-    ${[['/bang-gia-thue-lumi-ha-noi/', `Bảng giá thuê Lumi ${MONTH_LABEL}`, 'Giá thấp nhất, mức giữa và cao nhất theo loại căn, tòa và nội thất.', 'ho-boi-bac-thang-lumi-ha-noi'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm thuê căn hộ Lumi', 'Chọn loại căn, hướng ban công, nội thất và những điều cần hỏi trước khi cọc.', 'phong-khach-chung-lumi'], ['/so-sanh-can-1pn-2pn-3pn-lumi/', 'So sánh căn 1PN, 2PN, 3PN', 'Diện tích, giá thuê, giá/m² từng loại căn theo số liệu bảng hàng.', 'phong-sinh-hoat-cong-dong-lumi'], ['/xung-quanh-lumi-ha-noi/', 'Lumi Hà Nội ở đâu?', 'Địa chỉ, đi lại, chợ và trường học quanh dự án.', 'thap-lumi-hanoi'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích Lumi Hà Nội', 'Hồ bơi, gym, sân tennis, khu trẻ em, phòng sinh hoạt cộng đồng.', 'phong-gym-lumi-ha-noi'], ['/chu-nha-ky-gui/', 'Chủ nhà ký gửi căn', 'Đưa căn lên bảng hàng, website và nhóm cư dân Lumi mỗi ngày.', 'bien-hieu-lumi-signature']].map(([u, h, d, ph]) => `<a class="g-card" href="${u}">${pic(photo(ph), { sizes: '(max-width: 700px) 100vw, 25vw', alt: '' })}<h3>${h}</h3><p>${d}</p></a>`).join('')}
+    ${[['/bang-gia-thue-lumi-ha-noi/', `Bảng giá thuê Lumi ${MONTH_LABEL}`, 'Giá thấp nhất, mức giữa và cao nhất theo loại căn, tòa và nội thất.', 'ho-boi-bac-thang-lumi-ha-noi'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm thuê căn hộ Lumi', 'Chọn loại căn, hướng ban công, nội thất và những điều cần hỏi trước khi cọc.', 'phong-khach-chung-lumi'], ['/so-sanh-can-1pn-2pn-3pn-lumi/', 'So sánh căn 1PN, 2PN, 3PN', 'Diện tích, giá thuê từng loại căn theo số liệu bảng hàng.', 'phong-sinh-hoat-cong-dong-lumi'], ['/xung-quanh-lumi-ha-noi/', 'Lumi Hà Nội ở đâu?', 'Địa chỉ, đi lại, chợ và trường học quanh dự án.', 'thap-lumi-hanoi'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích Lumi Hà Nội', 'Hồ bơi, gym, sân tennis, khu trẻ em, phòng sinh hoạt cộng đồng.', 'phong-gym-lumi-ha-noi'], ['/chu-nha-ky-gui/', 'Chủ nhà ký gửi căn', 'Đưa căn lên bảng hàng, website và nhóm cư dân Lumi mỗi ngày.', 'bien-hieu-lumi-signature']].map(([u, h, d, ph]) => `<a class="g-card" href="${u}">${pic(photo(ph), { sizes: '(max-width: 700px) 100vw, 25vw', alt: '' })}<h3>${h}</h3><p>${d}</p></a>`).join('')}
   </div>
 </section>`;
   return layout({
@@ -436,7 +434,7 @@ function unitPage(x, all) {
   const ps = stat(peers);
   const similar = all.filter(y => y.id !== x.id && y.isRent === x.isRent && y.type === x.type).sort((a, b) => (b.tower === x.tower) - (a.tower === x.tower) || score(b) - score(a) || Math.abs(a.price - x.price) - Math.abs(b.price - x.price)).slice(0, 8);
   const dt = x.updated ? x.updated.split('-').reverse().join('/') : '';
-  const rows = [['Loại căn', cap(x.t.short), I.bed], ['Diện tích', x.area ? m2(x.area) : '', I.area], ['Tòa', x.tower, I.tower], ['Hướng ban công', x.dir, I.dir], ['Nội thất', x.interior, I.sofa], ['Cập nhật', dt, I.check]].filter(r => r[1]);
+  const rows = [['Loại căn', cap(x.t.short), I.bed], ['Diện tích', x.area ? m2(x.area) : '', I.area], ['Tòa', x.tower, I.tower], ['Hướng ban công', x.dir, I.dir], ['Nội thất', x.interior, I.sofa], ...(!x.isRent && x.price && x.area ? [['Giá/m²', `≈ ${tr(x.price / x.area)} triệu/m²`, I.area]] : []), ['Cập nhật', dt, I.check]].filter(r => r[1]);
   let cmp = '';
   if (x.price && ps.n >= 3 && x.isRent) {
     const diff = (x.price - ps.med) / ps.med;
@@ -448,17 +446,12 @@ function unitPage(x, all) {
     x.price ? `Giá ${x.isRent ? 'thuê' : 'bán'} theo bảng hàng: ${x.priceText}${cmp ? `, ${cmp}` : ''}.` : '',
     `Gửi mã ${x.id} qua Zalo ${PHONE_FMT} để được báo giá mới nhất và hẹn giờ xem nhà.`,
   ].filter(Boolean).join(' ');
-  // Bối cảnh trong tòa: giá/m² so với cùng loại, số căn cùng loại cùng tòa, cùng hướng.
+  // Bối cảnh trong tòa: số căn cùng loại cùng tòa, cùng hướng.
   let towerCtx = '';
   if (x.isRent && !gone) {
     const sameTT = all.filter(y => y.isRent && y.tower === x.tower && y.type === x.type && y.price);
     const sameDir = x.dir ? all.filter(y => y.isRent && y.dir === x.dir && y.price).length : 0;
-    const myPpm = x.price && x.area ? x.price / x.area : 0;
     const parts = [];
-    if (myPpm && ps.ppm) {
-      const d = (myPpm - ps.ppm) / ps.ppm;
-      parts.push(`Tính theo diện tích, căn này khoảng <b>${kpm(myPpm)} nghìn đồng/m²/tháng</b>, ${Math.abs(d) < 0.03 ? 'ngang' : d < 0 ? `thấp hơn ${Math.round(-d * 100)}% so với` : `cao hơn ${Math.round(d * 100)}% so với`} mức giữa ${kpm(ps.ppm)}k/m² của các căn ${esc(x.t.short)} ở Lumi.`);
-    }
     if (sameTT.length > 1) {
       const st = stat(sameTT);
       const link = sameTT.length >= MIN_PAGE ? `/cho-thue/toa-${x.tower.toLowerCase()}/${x.t.slug}/` : `/cho-thue/toa-${x.tower.toLowerCase()}/`;
@@ -531,8 +524,8 @@ function pricePage(all) {
   const rent = all.filter(x => x.isRent && x.price);
   const types = Object.keys(TYPES).filter(k => rent.some(x => x.type === k));
   const towers = TOWER_ORDER.filter(t => rent.some(x => x.tower === t));
-  const row = (l, list, href) => { const s = stat(list); return [href ? `<a href="${href}">${l}</a>` : l, s.n, `${tr(s.min)} tr`, `<b>${tr(s.med)} tr</b>`, `${tr(s.max)} tr`, s.ppm ? `${kpm(s.ppm)}k` : '–']; };
-  const head = ['', 'Số căn', 'Thấp nhất', 'Mức giữa', 'Cao nhất', 'Giá/m²'];
+  const row = (l, list, href) => { const s = stat(list); return [href ? `<a href="${href}">${l}</a>` : l, s.n, `${tr(s.min)} tr`, `<b>${tr(s.med)} tr</b>`, `${tr(s.max)} tr`]; };
+  const head = ['', 'Số căn', 'Thấp nhất', 'Mức giữa', 'Cao nhất'];
   const areaB = [[0, 50], [50, 60], [60, 70], [70, 80], [80, 100], [100, 999]].map(([a, b]) => [a, b, rent.filter(x => x.area >= a && x.area < b)]).filter(r => r[2].length >= 2);
   const s = stat(rent);
   const sections = [
@@ -540,7 +533,6 @@ function pricePage(all) {
     { h: 'Giá thuê theo nội thất', html: priceTable(types.flatMap(t => ['full', 'basic'].map(k => [t, k, rent.filter(x => x.type === t && x.intKey === k)]).filter(r => r[2].length).map(([t, k, l]) => row(`${cap(TYPES[t].short)} – ${INTERIORS[k].name}`, l, l.length >= MIN_PAGE ? `/cho-thue/${TYPES[t].slug}/${INTERIORS[k].slug}/` : ''))), head) },
     { h: 'Giá thuê theo tòa', html: `${bars(towers.map(t => [`Tòa ${t}`, stat(rent.filter(x => x.tower === t)).med, `/cho-thue/toa-${t.toLowerCase()}/`]))}<p class="muted">Thanh thể hiện mức giữa giá thuê của các căn đang trống trong tòa. Mỗi tòa có tỉ lệ 1PN/2PN/3PN khác nhau, nên xem thêm bảng bên dưới.</p>${priceTable(towers.map(t => row(`Tòa ${t}`, rent.filter(x => x.tower === t), `/cho-thue/toa-${t.toLowerCase()}/`)), head)}` },
     { h: 'Giá thuê theo diện tích', html: priceTable(areaB.map(([a, b, l]) => row(b === 999 ? `Từ ${a} m²` : a === 0 ? `Dưới ${b} m²` : `${a}–${b} m²`, l)), head) },
-    { h: 'Giá thuê theo m²', html: `<p>Tính chung toàn bộ căn đang cho thuê, mức giữa là khoảng <b>${kpm(s.ppm)} nghìn đồng/m²/tháng</b>. Theo nội thất: full nội thất ${kpm(stat(rent.filter(x => x.intKey === 'full')).ppm)}k/m², nội thất cơ bản ${kpm(stat(rent.filter(x => x.intKey === 'basic')).ppm)}k/m². Theo loại căn:</p>${bars(types.map(t => { const q = stat(rent.filter(x => x.type === t)); return [cap(TYPES[t].short), q.ppm * 50, `/cho-thue/${TYPES[t].slug}/`]; })).replace(/(\d+(,\d)?) tr<\/span>/g, (m, v) => `${num(parseFloat(v.replace(',', '.')) * 1e6 / 50 / 1000, 0)}k/m²</span>`)}` },
     { h: 'Cách đọc bảng giá', html: `<ul><li>Giá lấy trực tiếp từ bảng hàng, là giá chủ nhà chào thuê; giá chốt có thể thương lượng.</li><li>Bảng tự cập nhật khi bảng hàng thay đổi. Căn đã cho thuê không còn được tính.</li><li>Muốn biết giá chính xác của một căn, gửi mã căn qua Zalo ${PHONE_FMT}.</li></ul>` },
   ];
   return article({ canonical: '/bang-gia-thue-lumi-ha-noi/', title: `Bảng giá thuê căn hộ Lumi Hà Nội ${MONTH_LABEL} (cập nhật hằng ngày) | ${BRAND}`, desc: `Giá thuê căn hộ Lumi Hà Nội ${MONTH_LABEL}: ${s.n} căn, từ ${tr(s.min)} đến ${tr(s.max)} triệu/tháng. Bảng giá 1PN, 2PN, 3PN theo tòa, diện tích, nội thất.`, h1: `Bảng giá thuê căn hộ Lumi Hà Nội ${MONTH_LABEL}`, crumbs: [['Trang chủ', '/'], ['Bảng giá thuê', '/bang-gia-thue-lumi-ha-noi/']], lead: `Tổng hợp từ <b>${s.n} căn</b> đang cho thuê trên bảng hàng. Giá từ ${tr(s.min)} đến ${tr(s.max)} triệu/tháng, mức giữa ${tr(s.med)} triệu.`, sections, heroPhoto: 'ho-boi-bac-thang-lumi-ha-noi', active: '/bang-gia-thue-lumi-ha-noi/' });
@@ -587,12 +579,12 @@ function comparePage(all) {
   const types = ['1PN', '2PN', '3PN'].filter(k => rent.some(x => x.type === k));
   const st = Object.fromEntries(types.map(k => [k, stat(rent.filter(x => x.type === k))]));
   const ft = k => stat(rent.filter(x => x.type === k && x.intKey === 'full')), bt = k => stat(rent.filter(x => x.type === k && x.intKey === 'basic'));
-  const rows = [['Số căn đang cho thuê', ...types.map(k => st[k].n)], ['Diện tích', ...types.map(k => `${m2(st[k].areaMin)}–${m2(st[k].areaMax)}`)], ['Giá thuê', ...types.map(k => `${tr(st[k].min)}–${tr(st[k].max)} tr`)], ['Mức giữa', ...types.map(k => `<b>${tr(st[k].med)} tr</b>`)], ['Giá/m² (mức giữa)', ...types.map(k => `${kpm(st[k].ppm)}k`)], ['Mức giữa full nội thất', ...types.map(k => ft(k).n ? `${tr(ft(k).med)} tr` : '–')], ['Mức giữa nội thất cơ bản', ...types.map(k => bt(k).n ? `${tr(bt(k).med)} tr` : '–')]];
+  const rows = [['Số căn đang cho thuê', ...types.map(k => st[k].n)], ['Diện tích', ...types.map(k => `${m2(st[k].areaMin)}–${m2(st[k].areaMax)}`)], ['Giá thuê', ...types.map(k => `${tr(st[k].min)}–${tr(st[k].max)} tr`)], ['Mức giữa', ...types.map(k => `<b>${tr(st[k].med)} tr</b>`)], ['Mức giữa full nội thất', ...types.map(k => ft(k).n ? `${tr(ft(k).med)} tr` : '–')], ['Mức giữa nội thất cơ bản', ...types.map(k => bt(k).n ? `${tr(bt(k).med)} tr` : '–')]];
   const sections = [
     { h: 'Bảng so sánh nhanh', html: `${priceTable(rows, ['', ...types.map(k => `<a href="/cho-thue/${TYPES[k].slug}/">${cap(TYPES[k].short)}</a>`)])}<p class="muted">Số liệu tính từ ${rent.length} căn đang cho thuê trên bảng hàng ngày ${DATE_LABEL}, tự cập nhật.</p>` },
     ...types.map(k => ({ h: `Căn ${TYPES[k].short} phù hợp với ai?`, html: `<p>${{ '1PN': 'Người đi làm ở một mình hoặc cặp đôi, cần căn gọn, chi phí thấp nhất trong dự án.', '2PN': 'Gia đình trẻ có con nhỏ, hoặc hai người cần thêm phòng làm việc. Đây là loại căn có nhiều lựa chọn nhất.', '3PN': 'Gia đình đông người, ở cùng ông bà hoặc cần phòng riêng cho từng con.' }[k]}</p><p>${st[k].n} căn, diện tích ${m2(st[k].areaMin)}–${m2(st[k].areaMax)}, giá ${tr(st[k].min)}–${tr(st[k].max)} triệu/tháng. <a href="/cho-thue/${TYPES[k].slug}/">Xem tất cả căn ${TYPES[k].short}</a></p>` })),
   ];
-  return article({ canonical: '/so-sanh-can-1pn-2pn-3pn-lumi/', title: `So sánh căn 1PN, 2PN, 3PN Lumi Hà Nội: diện tích, giá thuê, giá/m²`, desc: `So sánh căn hộ 1 phòng ngủ, 2 phòng ngủ, 3 phòng ngủ tại Lumi Hà Nội: diện tích, giá thuê, giá/m², chênh lệch full nội thất và cơ bản. Số liệu từ ${rent.length} căn đang cho thuê.`, h1: 'So sánh căn 1PN, 2PN, 3PN ở Lumi Hà Nội', crumbs: [['Trang chủ', '/'], ['So sánh loại căn', '/so-sanh-can-1pn-2pn-3pn-lumi/']], lead: 'Chọn loại căn hợp với số người ở và ngân sách, dựa trên số liệu thật từ bảng hàng.', sections, heroPhoto: 'phong-sinh-hoat-cong-dong-lumi' });
+  return article({ canonical: '/so-sanh-can-1pn-2pn-3pn-lumi/', title: `So sánh căn 1PN, 2PN, 3PN Lumi Hà Nội: diện tích, giá thuê, nội thất`, desc: `So sánh căn hộ 1 phòng ngủ, 2 phòng ngủ, 3 phòng ngủ tại Lumi Hà Nội: diện tích, giá thuê, chênh lệch full nội thất và cơ bản. Số liệu từ ${rent.length} căn đang cho thuê.`, h1: 'So sánh căn 1PN, 2PN, 3PN ở Lumi Hà Nội', crumbs: [['Trang chủ', '/'], ['So sánh loại căn', '/so-sanh-can-1pn-2pn-3pn-lumi/']], lead: 'Chọn loại căn hợp với số người ở và ngân sách, dựa trên số liệu thật từ bảng hàng.', sections, heroPhoto: 'phong-sinh-hoat-cong-dong-lumi' });
 }
 function contactPage() {
   const bc = breadcrumbs([['Trang chủ', '/'], ['Liên hệ', '/lien-he/']]);
@@ -618,8 +610,7 @@ function towersIndex(rent) {
   const by = {}; for (const x of rent) (by[x.tower] ||= []).push(x);
   const towers = TOWER_ORDER.filter(t => by[t]);
   const bc = breadcrumbs([['Trang chủ', '/'], ['Các tòa', '/cac-toa/']]);
-  const body = `<section class="page-hero"><div class="wrap">${bc.html}<h1>Căn hộ cho thuê theo từng tòa Lumi Hà Nội</h1><p class="lead">Mỗi ô sáng là một căn đang trống. Chọn tòa để xem danh sách.</p></div></section>
-<section class="sky-band"><div class="wrap">${skyline(by)}</div></section>
+  const body = `<section class="page-hero"><div class="wrap">${bc.html}<h1>Căn hộ cho thuê theo từng tòa Lumi Hà Nội</h1><p class="lead">Số căn trống và khoảng giá thuê của từng tòa. Chọn tòa để xem danh sách.</p></div></section>
 <section class="wrap tower-list">${towers.map(t => { const s = stat(by[t]); return `<a href="/cho-thue/toa-${t.toLowerCase()}/"><b>Tòa ${t}</b><span>${s.n} căn · ${tr(s.min)}–${tr(s.max)} triệu/tháng</span><span class="tl-types">${Object.keys(TYPES).filter(k => by[t].some(x => x.type === k)).map(k => `${TYPES[k].code.toUpperCase()}: ${by[t].filter(x => x.type === k).length}`).join(' · ')}</span></a>`; }).join('')}</section>`;
   return layout({ title: `Cho thuê căn hộ Lumi Hà Nội theo tòa ${towers.join(', ')} | ${BRAND}`, desc: `Căn hộ cho thuê Lumi Hà Nội theo từng tòa ${towers.join(', ')}: số căn trống, giá thuê thấp nhất – cao nhất, loại căn.`, canonical: '/cac-toa/', body, active: '/cac-toa/', jsonld: [ORG, bc.ld] });
 }
