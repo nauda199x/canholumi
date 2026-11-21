@@ -10,6 +10,9 @@ const PHONE = '0977923284';
 const PHONE_FMT = '0977 923 284';
 const PHONE_INTL = '+84977923284';
 const ZALO = `https://zalo.me/${PHONE}`;
+// Google Analytics 4: mã đo lưu trong ga-id.txt (G-XXXXXXX). Không có file → không gắn.
+const GA_ID = (() => { try { const v = fs.readFileSync('ga-id.txt', 'utf8').trim(); return /^G-[A-Z0-9]+$/.test(v) ? v : ''; } catch { return ''; } })();
+const GA_TAG = GA_ID ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${GA_ID}');</script>` : '';
 const API = 'https://lumihanoi.pages.dev/api/listings';
 const OUT = 'dist';
 const LIVE_URL = fs.existsSync('live-endpoint.txt') ? fs.readFileSync('live-endpoint.txt', 'utf8').trim() : '';
@@ -166,6 +169,7 @@ ${modified ? `<meta property="article:modified_time" content="${modified}">` : '
 ${FONT_PRELOAD}
 ${preload}
 <style>${INLINE_CSS}</style>
+${GA_TAG}
 ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
 </head>
 <body>

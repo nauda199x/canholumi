@@ -224,3 +224,14 @@ ${u.imgs.length ? `<div class="gal gal-${Math.min(u.imgs.length, 5)}">${u.imgs.s
   setInterval(sync, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
 })();
+
+// Đo lượt liên hệ (GA4): nhắn Zalo, gọi điện, gửi ký gửi. Chỉ chạy khi trang có gtag.
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (!a || typeof window.gtag !== 'function') return;
+  const h = a.getAttribute('href');
+  const ev = /zalo\.me/.test(h) ? 'lien_he_zalo' : /^tel:/.test(h) ? 'goi_dien' : '';
+  if (!ev) return;
+  const m = location.pathname.match(/-(thue|ban)[a-z0-9]*-\d+\/$/i);
+  window.gtag('event', ev, { trang: location.pathname, ma_can: m ? m[0].slice(1, -1) : '' });
+}, true);
