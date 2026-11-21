@@ -117,7 +117,8 @@
       c.classList.toggle('more-hidden', ok && (n < (pg - 1) * PAGE || n >= pg * PAGE));
       if (ok) n++;
     }
-    const dem = $('#dem'); if (dem) dem.textContent = n;
+    const _tot = +grid.dataset.total || 0, _flt = form && [...f].some(([k, v]) => v && k !== 'sort');
+    const dem = $('#dem'); if (dem) dem.textContent = !_flt && _tot > cards.length ? _tot : n;
     const rong = $('#rong'); if (rong) rong.hidden = n > 0;
     if (moreBtn) moreBtn.hidden = true;
     const totalAll = +grid.dataset.total || 0;
