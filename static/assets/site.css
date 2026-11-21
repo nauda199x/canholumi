@@ -413,3 +413,23 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
 
 .pager{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.4rem;margin:1.8rem 0 .4rem}.pager button{min-width:2.6rem;height:2.6rem;padding:0 .7rem;border-radius:10px;border:1px solid var(--line,#d5e0dd);background:var(--surface,#fff);font:600 .95rem var(--f);color:var(--ink);cursor:pointer}.pager button[aria-current]{background:var(--night,#0f2b33);border-color:var(--night,#0f2b33);color:#fff}.pager button:disabled{opacity:.35;cursor:default}.pager button.wait{opacity:.6}.pager span{color:var(--ink-3);padding:0 .2rem}.pager button:focus-visible{outline:2px solid var(--lagoon,#0b7a68);outline-offset:2px}
 [hidden]{display:none!important}
+/* v2.3: ảnh tiện ích thay khung trống, thẻ căn bố cục cố định, bộ lọc gọn trên mobile */
+.card-media .fillnote{position:absolute;left:.6rem;bottom:.6rem;background:rgba(15,43,51,.78);color:#fff;font-size:.72rem;font-weight:600;padding:.25em .6em;border-radius:999px}
+.facts{flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+.int{display:flex;align-items:center;gap:.3rem;margin:.2rem 0 0;color:var(--ink-2);font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.int svg{width:15px;height:15px;fill:var(--ink-3);flex:none}
+.f-toggle{display:none;align-items:center;gap:.4rem;padding:.55rem .9rem;border:1px solid var(--mist);border-radius:10px;background:var(--paper);font:600 .95rem var(--f);color:var(--ink);cursor:pointer}
+.f-toggle svg{width:16px;height:16px;fill:currentColor}
+.f-n{min-width:1.3rem;height:1.3rem;border-radius:999px;background:var(--lamp);color:var(--night);font-size:.75rem;display:inline-grid;place-content:center}
+.f-more{display:grid;gap:.75rem}
+.f-sel{gap:.6rem 1rem}
+.f-done{display:none;margin:0}
+@media (max-width:860px){
+.f-toggle{display:inline-flex}
+.f-top{flex-wrap:nowrap}
+.f-q{flex:1 1 auto;min-width:0}
+.f-more{display:none}
+.filters.open .f-more{display:grid}
+.f-done{display:block}.f-done .btn{width:100%}
+}
+@media (max-width:560px){.int{font-size:.8rem}.card-media .fillnote{font-size:.66rem}}

@@ -113,6 +113,9 @@ const INLINE_CSS = minCss(fs.readFileSync('static/assets/fonts.css', 'utf8') + f
 const FONT_PRELOAD = ['latin-400', 'vietnamese-400', 'latin-800'].map(f => `<link rel="preload" href="/fonts/bvp-${f}.woff2" as="font" type="font/woff2" crossorigin>`).join('\n');
 const photo = f => PHOTOS.find(p => p.f === f);
 const HERO = photo('ho-boi-cong-vien-lumi-ha-noi');
+// Ảnh tiện ích dùng cho thẻ căn chưa có ảnh (ghi rõ là ảnh tiện ích, không phải ảnh căn)
+const FILL = ['ho-boi-cong-vien-lumi-ha-noi', 'ho-boi-bac-thang-lumi-ha-noi', 'san-tam-nang-ho-boi-lumi', 'cau-di-bo-canh-quan-lumi', 'sanh-lounge-lumi-ha-noi', 'phong-gym-lumi-ha-noi', 'san-co-golf-lumi-ha-noi', 'khu-bar-cong-dong-lumi'];
+const fillFor = id => FILL[[...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % FILL.length];
 function pic(p, { sizes = '(max-width: 700px) 100vw, 50vw', cls = '', eager = false, alt } = {}) {
   const set = [480, 960, 1600].map(s => `/img/lumi/${p.f}-${s}.webp ${s}w`).join(', ');
   return `<img${cls ? ` class="${cls}"` : ''} src="/img/lumi/${p.f}-960.webp" srcset="${set}" sizes="${sizes}" alt="${esc(alt ?? p.alt)}" width="960" height="${Math.round(960 * p.h / p.w)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
@@ -237,13 +240,14 @@ const faqHtml = (faq, h = 'Câu hỏi thường gặp') => `<section class="faq 
 function card(x, i = 9) {
   const img = x.imgs[0];
   return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}">
-<a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(x.title)}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<span class="noimg">${logoSvg()}<span>Ảnh đang cập nhật</span></span>`}
-<span class="tags">${x.real ? '<span class="tag tag-real">Ảnh thật</span>' : x.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${x.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
+<a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(x.title)}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<img src="/img/lumi/${fillFor(x.id)}-480.webp" alt="" loading="lazy" decoding="async" width="480" height="360"><span class="fillnote">Ảnh căn đang cập nhật</span>`}
+<span class="tags">${x.real ? '<span class="tag tag-real">Ảnh thật</span>' : x.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : '<span class="tag">Ảnh tiện ích</span>'}${x.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
 <button class="save" type="button" data-save="${esc(x.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(x.id)}">${I.heart}</button>
 <div class="card-body">
 <p class="price" data-f="price">${esc(x.priceText)}${!x.isRent && x.price && x.area ? `<small class="ppm"> · ≈ ${tr(x.price / x.area)} tr/m²</small>` : ''}</p>
 <h3><a href="${x.url}">${esc(cap(x.t.short))} · Tòa ${x.tower}</a></h3>
-<ul class="facts">${x.area ? `<li>${I.area}${m2(x.area)}</li>` : ''}${x.dir ? `<li>${I.dir}${esc(x.dir)}</li>` : ''}${x.interior ? `<li>${I.sofa}${x.intKey === 'full' ? 'Full nội thất' : 'Cơ bản'}</li>` : ''}</ul>
+<ul class="facts">${x.area ? `<li>${I.area}${m2(x.area)}</li>` : ''}${x.dir ? `<li>${I.dir}${esc(x.dir)}</li>` : ''}</ul>
+<p class="int">${I.sofa}${x.intKey === 'full' ? 'Full nội thất' : x.interior ? 'Nội thất cơ bản' : 'Nội thất: hỏi qua Zalo'}</p>
 <p class="code">Mã ${esc(x.id)}</p>
 </div></article>`;
 }
@@ -253,13 +257,15 @@ function filters(list, { noTower = false, noType = false, sale = false } = {}) {
   const prices = sale ? [4, 5, 6, 8, 10].map(v => [v * 1e9, `${v} tỷ`]) : [8, 10, 12, 15, 20].map(v => [v * 1e6, `${v} triệu`]);
   const chips = (name, opts) => `<div class="chips">${[['', 'Tất cả'], ...opts].map(([v, l], i) => `<label><input type="radio" name="${name}" value="${v}"${i ? '' : ' checked'}><span>${l}</span></label>`).join('')}</div>`;
   return `<form class="filters" id="loc" aria-label="Lọc căn hộ" onsubmit="return false">
-<div class="f-row f-top"><label class="f-q"><span class="sr">Tìm theo mã căn</span><input type="search" name="q" placeholder="Tìm mã căn, ví dụ ${esc(list[0]?.id || 'Thue2N.87')}" autocomplete="off"></label>
+<div class="f-row f-top"><label class="f-q"><span class="sr">Tìm theo mã căn</span><input type="search" name="q" placeholder="Tìm mã căn, ví dụ ${esc(list[0]?.id || 'Thue2N.87')}" autocomplete="off"></label><button type="button" class="f-toggle" aria-expanded="false" aria-controls="f-more">${I.filter}<span>Bộ lọc</span><b class="f-n" hidden></b></button></div>
+<div class="f-more" id="f-more"><div class="f-row f-sel">
 <label class="sel"><span>Giá tối đa</span><select name="max"><option value="">Mọi mức giá</option>${prices.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
 <label class="sel"><span>Diện tích</span><select name="dt"><option value="">Mọi diện tích</option>${areaOpts(list)}</select></label>
 <label class="sel"><span>Sắp xếp</span><select name="sort"><option value="new">Ảnh thật trước</option><option value="asc">Giá thấp trước</option><option value="desc">Giá cao trước</option><option value="area">Diện tích lớn</option></select></label></div>
 ${!noType && types.length > 1 ? `<fieldset class="f-row"><legend class="f-label">Loại căn</legend>${chips('type', types.map(t => [t, TYPES[t].short]))}</fieldset>` : ''}
 ${!noTower && towers.length > 1 ? `<fieldset class="f-row"><legend class="f-label">Tòa</legend>${chips('tower', towers.map(t => [t, t]))}</fieldset>` : ''}
 ${uniq(list.map(x => x.intKey).filter(Boolean)).length > 1 ? `<fieldset class="f-row"><legend class="f-label">Nội thất</legend>${chips('int', [['full', 'Full nội thất'], ['basic', 'Cơ bản']])}</fieldset>` : ''}
+<p class="f-done"><button type="button" class="btn btn-lamp" data-close-f>Xem kết quả</button></p></div>
 <p class="result" aria-live="polite"><b id="dem">${list.length}</b> căn phù hợp <button type="button" class="reset" data-reset hidden>Xoá bộ lọc</button></p>
 </form>`;
 }
@@ -479,6 +485,7 @@ function unitPage(x, all) {
       <section><h2>Mô tả</h2><p>${esc(descr)}</p></section>
       ${pos !== null ? `<section><h2>Giá so với các căn ${esc(x.t.short)} khác</h2><div class="pbar"><div class="pbar-track"><span class="pbar-med" style="left:${((ps.med - ps.min) / (ps.max - ps.min) * 100).toFixed(1)}%"></span><span class="pbar-me" style="left:${pos.toFixed(1)}%"><b>Căn này</b></span></div><div class="pbar-lbl"><span>${tr(ps.min)} tr</span><span>Mức giữa ${tr(ps.med)} tr</span><span>${tr(ps.max)} tr</span></div></div><p class="muted">So với ${ps.n} căn ${x.t.short} đang ${x.isRent ? 'cho thuê' : 'bán'} trên bảng hàng.</p></section>` : ''}
       ${towerCtx}
+      <section><h2>Vị trí tòa ${x.tower}</h2><p>Tòa ${x.tower} thuộc dự án Lumi Hanoi, mặt Đại lộ Thăng Long, phường Tây Mỗ. <a href="/xung-quanh-lumi-ha-noi/">Xem đường đi, chợ, trường học quanh Lumi</a>.</p>${mapFacade()}</section>
       <section><h2>Tiện ích nội khu</h2><div class="u-amen">${[['ho-boi-ngoai-troi-lumi-signature', 'Hồ bơi ngoài trời'], ['phong-gym-lumi-ha-noi', 'Phòng gym'], ['khu-vui-choi-tre-em-lumi', 'Khu trẻ em'], ['sanh-lounge-lumi-ha-noi', 'Sảnh lounge']].map(([f, c]) => `<figure>${pic(photo(f), { sizes: '(max-width: 700px) 50vw, 15vw' })}<figcaption>${c}</figcaption></figure>`).join('')}</div><p><a href="/tien-ich-lumi-ha-noi/">Xem tất cả tiện ích Lumi Hà Nội</a></p></section>
     </div>
     <aside class="u-side"><div class="u-card">

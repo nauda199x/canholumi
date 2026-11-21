@@ -38,14 +38,16 @@
     };
   }
   const score = u => (u.real ? 2 : 0) + (u.imgs.length ? 1 : 0);
+  const FILL = ['ho-boi-cong-vien-lumi-ha-noi', 'ho-boi-bac-thang-lumi-ha-noi', 'san-tam-nang-ho-boi-lumi', 'cau-di-bo-canh-quan-lumi', 'sanh-lounge-lumi-ha-noi', 'phong-gym-lumi-ha-noi', 'san-co-golf-lumi-ha-noi', 'khu-bar-cong-dong-lumi'];
+  const fillFor = id => FILL[[...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % FILL.length];
   function cardHtml(u, href, isNew) {
     const img = u.imgs[0];
     return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-new="${score(u)}${u.updated || ''}">
-<a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(cap(u.t[2]))} tòa ${esc(u.tower)} Lumi Hà Nội" loading="lazy" width="600" height="450">` : '<span class="noimg"><span>Ảnh đang cập nhật</span></span>'}
-<span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : ''}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
+<a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(cap(u.t[2]))} tòa ${esc(u.tower)} Lumi Hà Nội" loading="lazy" width="600" height="450">` : `<img src="/img/lumi/${fillFor(u.id)}-480.webp" alt="" loading="lazy" width="480" height="360"><span class="fillnote">Ảnh căn đang cập nhật</span>`}
+<span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : '<span class="tag">Ảnh tiện ích</span>'}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
 <button class="save" type="button" data-save="${esc(u.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(u.id)}">${SVG.heart}</button>
 <div class="card-body"><p class="price" data-f="price">${esc(u.priceText)}</p><h3><a href="${href || u.url}">${esc(cap(u.t[1]))} · Tòa ${esc(u.tower)}</a></h3>
-<ul class="facts">${u.area ? `<li>${SVG.area}${num(u.area, 1)} m²</li>` : ''}${u.dir ? `<li>${SVG.dir}${esc(u.dir)}</li>` : ''}${u.intKey ? `<li>${SVG.sofa}${u.intKey === 'full' ? 'Full nội thất' : 'Cơ bản'}</li>` : ''}</ul>
+<ul class="facts">${u.area ? `<li>${SVG.area}${num(u.area, 1)} m²</li>` : ''}${u.dir ? `<li>${SVG.dir}${esc(u.dir)}</li>` : ''}</ul><p class="int">${SVG.sofa}${u.intKey === 'full' ? 'Full nội thất' : u.intKey ? 'Nội thất cơ bản' : 'Nội thất: hỏi qua Zalo'}</p>
 <p class="code">Mã ${esc(u.id)}${u.goneAt ? ' · đã gỡ khỏi bảng hàng' : ''}</p></div></article>`;
   }
 
@@ -129,6 +131,7 @@
     renderPager(pages);
     const active = form && [...f].some(([k, v]) => v && k !== 'sort');
     const rs = $('[data-reset]'); if (rs) rs.hidden = !active;
+    const fn = form && form.querySelector('.f-n'); if (fn) { const k = [...f].filter(([k, v]) => v && !['q', 'sort'].includes(k)).length; fn.hidden = !k; fn.textContent = k; }
     if (updateUrl && form) {
       const p = new URLSearchParams();
       for (const [k, v] of f) if (v && !(k === 'sort' && v === 'new')) p.set(k, v);
@@ -145,6 +148,10 @@
         if (el instanceof RadioNodeList) { for (const r of el) r.checked = r.value === v; } else el.value = v;
       }
       form.addEventListener('change', () => { pg = 1; apply(true); });
+      const tg = form.querySelector('.f-toggle'), setOpen = o => { form.classList.toggle('open', o); if (tg) tg.setAttribute('aria-expanded', o); };
+      if (tg) tg.addEventListener('click', () => setOpen(!form.classList.contains('open')));
+      form.querySelector('[data-close-f]')?.addEventListener('click', () => { setOpen(false); grid.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      document.querySelectorAll('a[href$="#danh-sach"]').forEach(a => a.addEventListener('click', () => { if (location.pathname === '/' || a.pathname === location.pathname) setOpen(true); }));
       form.addEventListener('input', e => { if (e.target.name === 'q') { pg = 1; apply(true); } });
       const rs = $('[data-reset]'); if (rs) rs.addEventListener('click', () => { form.reset(); pg = 1; apply(true); });
       if (any && location.pathname === '/') setTimeout(() => $('#danh-sach')?.scrollIntoView(), 50);
