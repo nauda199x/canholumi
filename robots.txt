@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /da-luu/
+Disallow: /can-ho/xem/
+Disallow: /data/
+
+Sitemap: https://canholumi.com/sitemap.xml
