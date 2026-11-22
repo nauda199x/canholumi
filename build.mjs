@@ -371,7 +371,7 @@ function homePage(all, meta) {
   <div class="hero-in wrap">
     <p class="hero-kicker"><span class="dot" aria-hidden="true"></span><b data-count="rent">${rent.length} căn</b> đang trống · cập nhật <span data-live="time">${upd}</span></p>
     <h1>Cho thuê căn hộ Lumi Hà Nội</h1>
-    <p class="hero-sub">Danh sách căn lấy thẳng từ bảng hàng, mỗi căn có mã riêng và giá rõ ràng. Chọn căn ưng ý, gửi mã qua Zalo để hẹn xem nhà.</p>
+    <p class="hero-sub">Quỹ căn hộ chung cư Lumi Hanoi đang cho thuê, lấy thẳng từ bảng hàng, mỗi căn có mã riêng và giá rõ ràng. Chọn căn ưng ý, gửi mã qua Zalo để hẹn xem nhà.</p>
     <form class="hero-search" action="/" method="get" role="search" aria-label="Tìm căn hộ">
       <label><span>Loại căn</span><select name="type"><option value="">Tất cả</option>${types.map(t => `<option value="${t}">${TYPES[t].short}</option>`).join('')}</select></label>
       <label><span>Tòa</span><select name="tower"><option value="">Tất cả</option>${towers.map(t => `<option value="${t}">${t}</option>`).join('')}</select></label>
@@ -423,8 +423,8 @@ ${faqHtml(faq)}
   </div>
 </section>`;
   return layout({
-    title: `Cho thuê căn hộ Lumi Hà Nội – ${rent.length} căn trống, giá từ ${tr(s.min)} triệu | ${BRAND}`,
-    desc: `${rent.length} căn hộ cho thuê Lumi Hà Nội (Lumi Hanoi – CapitaLand): 1PN, 2PN, 3PN từ ${tr(s.min)} triệu/tháng, ảnh thật, giá rõ ràng, tự cập nhật từng phút. Zalo ${PHONE_FMT}.`,
+    title: `Cho thuê chung cư Lumi Hà Nội (Lumi Hanoi) – ${rent.length} căn, từ ${tr(s.min)} triệu`,
+    desc: `Thuê chung cư Lumi Hanoi: ${rent.length} căn hộ 1PN, 2PN, 3PN đang trống, từ ${tr(s.min)} triệu/tháng, giá rõ ràng, tự cập nhật theo bảng hàng. Zalo ${PHONE_FMT}.`,
     canonical: '/', body, active: '/', alt: [['vi', '/'], ['en', '/en/'], ['x-default', '/']],
     preload: `<link rel="preload" as="image" imagesrcset="${heroSet}" imagesizes="100vw" fetchpriority="high">`,
     jsonld: [ORG, COMPLEX, { '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND, url: SITE + '/', inLanguage: 'vi', potentialAction: { '@type': 'SearchAction', target: `${SITE}/?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }, itemList(rent, 'Căn hộ cho thuê Lumi Hà Nội'), faqLd(faq)],
