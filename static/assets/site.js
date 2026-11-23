@@ -32,7 +32,7 @@
     const slug = String(x.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return {
       id: String(x.id), isRent, type: x.type, t, tower, price, intKey, dir, area: Number(x.area) || 0, updated, real: (x.real ?? x.mediaStatus === 'verified') && ids.length > 0,
-      imgs: ids.map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1280`),
+      imgs: ids.map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1280`), img0: ids[0] || '',
       priceText: !price ? 'Liên hệ' : isRent ? `${num(price / 1e6, 1)} triệu/tháng` : `${num(price / 1e9, 3)} tỷ`,
       url: `/can-ho/${isRent ? 'cho-thue' : 'ban'}-can-ho-lumi-${t[0]}-${tower.toLowerCase()}-${slug}/`, goneAt: x.goneAt,
     };
@@ -42,7 +42,7 @@
   const fillFor = id => FILL[[...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % FILL.length];
   function cardHtml(u, href, isNew) {
     const img = u.imgs[0];
-    return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-new="${score(u)}${u.updated || ''}">
+    return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-img="${esc(u.img0 || '')}" data-new="${score(u)}${u.updated || ''}">
 <a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(cap(u.t[2]))} tòa ${esc(u.tower)} Lumi Hà Nội" loading="lazy" width="600" height="450">` : `<img src="/img/lumi/${fillFor(u.id)}-480.webp" alt="" loading="lazy" width="480" height="360"><span class="fillnote">Ảnh căn đang cập nhật</span>`}
 <span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : '<span class="tag">Ảnh tiện ích</span>'}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
 <button class="save" type="button" data-save="${esc(u.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(u.id)}">${SVG.heart}</button>
@@ -210,6 +210,7 @@
           const u = units.get(c.dataset.id);
           if (!u || !inScope(u)) { c.classList.add('gone'); continue; }
           c.classList.remove('gone'); c.dataset.price = u.price; setPrice(c, u);
+          if ('img' in c.dataset && c.dataset.img !== u.img0) { const a = c.querySelector('h3 a'); const t = document.createElement('div'); t.innerHTML = cardHtml(u, a && a.getAttribute('href')); const n = t.firstElementChild; n.className = c.className; c.replaceWith(n); }
         }
         const partial = (+grid.dataset.total || 0) > grid.children.length;
         const known = partial ? new Set(((await getArchive().catch(() => ({ units: [] }))).units || []).filter(x => !x.goneAt).map(x => String(x.id))) : new Set();

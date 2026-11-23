@@ -65,6 +65,8 @@ async function fetchJson(url) {
 }
 async function loadData() {
   if (process.argv[2]) return JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+  // refresh=1: bắt hệ thống bảng hàng đọc lại Google Sheet ngay, không dùng bản nhớ 15 phút.
+  try { const d = await fetchJson(`${API}?refresh=1&ts=${Date.now()}`); if (Array.isArray(d.listings) && d.listings.length >= 40) return d; } catch (e) { console.log('refresh=1 lỗi, dùng dữ liệu thường:', e.message); }
   return fetchJson(`${API}?ts=${Date.now()}`);
 }
 async function loadArchive() {
@@ -239,7 +241,7 @@ const faqHtml = (faq, h = 'Câu hỏi thường gặp') => `<section class="faq 
 // ---------- Thẻ căn ----------
 function card(x, i = 9) {
   const img = x.imgs[0];
-  return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}">
+  return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-img="${esc((x.img || [])[0] || '')}" data-new="${score(x)}${x.updated || ''}">
 <a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(x.title)}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<img src="/img/lumi/${fillFor(x.id)}-480.webp" alt="" loading="lazy" decoding="async" width="480" height="360"><span class="fillnote">Ảnh căn đang cập nhật</span>`}
 <span class="tags">${x.real ? '<span class="tag tag-real">Ảnh thật</span>' : x.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : '<span class="tag">Ảnh tiện ích</span>'}${x.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
 <button class="save" type="button" data-save="${esc(x.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(x.id)}">${I.heart}</button>

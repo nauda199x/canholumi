@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'   # dựng lại trang tĩnh (SEO); trình duyệt khách đã tự cập nhật mỗi phút
+    - cron: '*/5 * * * *'   # dựng lại trang tĩnh 5 phút/lần; trình duyệt khách tự cập nhật mỗi phút
 permissions:
   contents: write
 concurrency:
