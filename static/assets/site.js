@@ -42,7 +42,7 @@
   const fillFor = id => FILL[[...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % FILL.length];
   function cardHtml(u, href, isNew) {
     const img = u.imgs[0];
-    return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-price="${u.price}" data-area="${u.area}" data-img="${esc(u.img0 || '')}" data-new="${score(u)}${u.updated || ''}">
+    return `<article class="card" data-id="${esc(u.id)}" data-rent="${u.isRent ? 1 : 0}" data-type="${u.type}" data-tower="${esc(u.tower)}" data-int="${u.intKey}" data-dir="${esc(u.dir)}" data-price="${u.price}" data-area="${u.area}" data-img="${esc(u.img0 || '')}" data-new="${score(u)}${u.updated || ''}">
 <a class="card-media" href="${href || u.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(cap(u.t[2]))} tòa ${esc(u.tower)} Lumi Hà Nội" loading="lazy" width="600" height="450">` : `<img src="/img/lumi/${fillFor(u.id)}-480.webp" alt="" loading="lazy" width="480" height="360"><span class="fillnote">Ảnh căn đang cập nhật</span>`}
 <span class="tags">${u.real ? '<span class="tag tag-real">Ảnh thật</span>' : u.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : '<span class="tag">Ảnh tiện ích</span>'}${u.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${isNew ? '<span class="newtag">Mới</span>' : ''}</a>
 <button class="save" type="button" data-save="${esc(u.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(u.id)}">${SVG.heart}</button>
@@ -90,15 +90,131 @@
     lb.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(cur() + 1); if (e.key === 'ArrowLeft') go(cur() - 1); });
   }
 
-  // ---------- Bộ lọc + phân trang ----------
+  // ---------- Bộ lọc thông minh (1 bộ lọc duy nhất) + phân trang ----------
   const form = $('#loc'), grid = $('#ds');
-  const PAGE = 24; let shown = PAGE; let pg = Math.max(1, +new URLSearchParams(location.search).get('trang') || 1);
+  const PAGE = 24; let pg = Math.max(1, +new URLSearchParams(location.search).get('trang') || 1);
   let archiveP = null; const getArchive = () => (archiveP ||= fetch('/data/archive.json').then(r => r.json()));
   const moreBtn = $('#more');
-  let pagerEl = null, needAll = null;
+  let pagerEl = null, needAll = null, allIn = !grid || (+grid.dataset.total || 0) <= grid.children.length;
+  const fold = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+  const rng = v => { if (!v) return null; const [a, b] = String(v).split('-').map(Number); return [a || 0, b || Infinity]; };
+  const GROUPS = ['type', 'gia', 'tower', 'dt', 'int', 'dir'];
+  const DIRMAP = { 'dong nam': 'Đông Nam', 'tay bac': 'Tây Bắc', 'dong bac': 'Đông Bắc', 'tay nam': 'Tây Nam' };
+  const WORDN = { mot: 1, hai: 2, ba: 3, bon: 4 };
+  const trTxt = v => v >= 1e9 ? `${num(v / 1e9, 2)} tỷ` : `${num(v / 1e6, 1)} triệu`;
+  // Hiểu câu khách gõ: "2pn s3 full dưới 12tr", "3 phòng ngủ tầm 15 triệu hướng đông nam", "căn 74m2", hoặc mã "Thue2N.16"
+  function parseQ(raw) {
+    const o = {}; let s = ' ' + fold(raw).replace(/(\d),(\d)/g, '$1.$2') + ' ';
+    if (!s.trim()) return o;
+    if (/(thue|ban)\s*\d\s*[a-z]*\s*\.\s*\d/.test(s)) { o.code = s.replace(/\s+/g, ''); return o; }
+    const take = (re, fn) => { s = s.replace(re, (...m) => fn(m) === false ? m[0] : ' '); };
+    const mul = u => /^(ty|ti)$/.test(u) ? 1e9 : 1e6;
+    take(/\b(\d{1,3}(?:\.\d{3}){2,})\s*(?:d|vnd|dong)?\b/g, m => { o.pmax = +m[1].replace(/\./g, ''); });
+    take(/(?:tu\s*)?(\d+(?:\.\d+)?)\s*(?:tr|trieu|cu|ty|ti)?\s*(?:-|–|den|toi|~)\s*(\d+(?:\.\d+)?)\s*(tr|trieu|cu|ty|ti)(?![a-z0-9])/g, m => { const k = mul(m[3]); o.pmin = +m[1] * k; o.pmax = +m[2] * k; });
+    take(/(duoi|tren|tu|tam|khoang|<|>|~)?\s*(\d{2,3}(?:\.\d)?)\s*(m2|m²|met vuong|met|m)(?![a-z0-9])/g, m => {
+      const v = +m[2]; if (m[3] === 'm' && v < 30) return false;
+      if (/duoi|</.test(m[1] || '')) o.amax = v; else if (/tren|tu|>/.test(m[1] || '')) o.amin = v; else { o.amin = v - 4; o.amax = v + 4; }
+    });
+    take(/(duoi|toi da|max|khong qua|<|tren|>|tu|tam|khoang|~)?\s*(\d+(?:\.\d+)?)\s*(tr|trieu|cu|m|ty|ti)(?![a-z0-9])/g, m => {
+      const v = +m[2] * mul(m[3]), w = m[1] || '';
+      if (/tren|>|^tu$/.test(w)) o.pmin = v; else if (/tam|khoang|~/.test(w)) { o.pmin = v * .85; o.pmax = v * 1.15; } else o.pmax = v;
+    });
+    take(/\b([1-4]|mot|hai|ba|bon)\s*(pn|p\.n|phong ngu|phong|ngu|br|bedrooms?|beds?|n)\b/g, m => { o.type = `${WORDN[m[1]] || m[1]}PN`; });
+    take(/\bduplex\b/g, () => { o.type = 'Duplex'; });
+    take(/\b(?:toa\s*)?([spe])\s?([1-9])\b/g, m => { o.tower = (m[1] + m[2]).toUpperCase(); });
+    take(/\b(full(?: do| noi that)?|day du(?: noi that)?|du do|noi that day du|cao cap)\b/g, () => { o.int = 'full'; });
+    take(/\b(co ban|nha trong|do co ban|chua co do|khong do)\b/g, () => { o.int = 'basic'; });
+    take(/\b(dong nam|tay bac|dong bac|tay nam)\b/g, m => { o.dir = DIRMAP[m[1]]; });
+    const rest = s.split(/\s+/).filter(w => /\d/.test(w) && w.length >= 3);
+    if (rest.length) o.code = rest.join('');
+    return o;
+  }
+  // Mỗi điều kiện khách gõ thành một nhãn riêng, bấm × bỏ được từng cái
+  const PKEYS = [['type', p => p.type === 'Duplex' ? 'Duplex' : `${p.type[0]} phòng ngủ`], ['tower', p => `Tòa ${p.tower}`], ['int', p => p.int === 'full' ? 'Full nội thất' : 'Nội thất cơ bản'], ['dir', p => `Hướng ${p.dir}`],
+    ['price', p => p.pmin && p.pmax ? `${trTxt(p.pmin)} – ${trTxt(p.pmax)}` : p.pmax ? `Tối đa ${trTxt(p.pmax)}` : `Từ ${trTxt(p.pmin)}`], ['area', p => p.amin && p.amax ? `${num(p.amin, 0)}–${num(p.amax, 0)} m²` : p.amax ? `Dưới ${num(p.amax, 0)} m²` : `Từ ${num(p.amin, 0)} m²`], ['code', p => `Mã ${p.code}`]];
+  const has = (p, k) => k === 'price' ? !!(p.pmin || p.pmax) : k === 'area' ? !!(p.amin || p.amax) : !!p[k];
+  const drop = (p, k) => { const o = { ...p }; if (k === 'price') { delete o.pmin; delete o.pmax; } else if (k === 'area') { delete o.amin; delete o.amax; } else delete o[k]; return o; };
+  const hintTxt = p => PKEYS.filter(([k]) => has(p, k)).map(([, f]) => f(p));
+  const nv = v => v >= 1e9 ? `${+(v / 1e9).toFixed(2)} tỷ` : `${+(v / 1e6).toFixed(1)}tr`;
+  // Viết lại điều kiện thành câu mà parseQ hiểu được (dùng khi bỏ bớt 1 điều kiện)
+  const toQ = p => [p.type && (p.type === 'Duplex' ? 'duplex' : p.type.toLowerCase()), p.tower && p.tower.toLowerCase(), p.int && (p.int === 'full' ? 'full' : 'cơ bản'), p.dir && `hướng ${p.dir.toLowerCase()}`,
+    p.pmin && `từ ${nv(p.pmin)}`, p.pmax && `dưới ${nv(p.pmax)}`, p.amin && `từ ${Math.round(p.amin)}m2`, p.amax && `dưới ${Math.round(p.amax)}m2`, p.code].filter(Boolean).join(' ');
+  function readState() {
+    const f = form ? new FormData(form) : new FormData();
+    const st = { q: String(f.get('q') || '').trim(), sort: f.get('sort') || 'new' };
+    for (const g of GROUPS) { const v = f.get(g) || ''; st[g] = g === 'gia' || g === 'dt' ? rng(v) : v; }
+    st.p = parseQ(st.q);
+    if (st.p.code && grid && [...grid.children].some(c => fold(c.dataset.id) === st.p.code)) st.p.exact = 1;
+    return st;
+  }
+  function match(d, st) {
+    const price = +d.price || 0, area = +d.area || 0, p = st.p;
+    if (st.type && d.type !== st.type) return false;
+    if (st.tower && d.tower !== st.tower) return false;
+    if (st.int && d.int !== st.int) return false;
+    if (st.dir && d.dir !== st.dir) return false;
+    if (st.gia && !(price > st.gia[0] && price <= st.gia[1])) return false;
+    if (st.dt && !(area >= st.dt[0] && area < st.dt[1])) return false;
+    if (p.type && d.type !== p.type) return false;
+    if (p.tower && d.tower !== p.tower) return false;
+    if (p.int && d.int !== p.int) return false;
+    if (p.dir && d.dir !== p.dir) return false;
+    if (p.pmax && !(price && price <= p.pmax)) return false;
+    if (p.pmin && !(price && price >= p.pmin)) return false;
+    if (p.amax && !(area && area <= p.amax)) return false;
+    if (p.amin && !(area && area >= p.amin)) return false;
+    if (p.code && (p.exact ? fold(d.id) !== p.code : !fold(d.id).replace(/\s+/g, '').includes(p.code))) return false;
+    return true;
+  }
+  const live = () => grid ? [...grid.children].filter(c => !c.classList.contains('gone')).map(c => c.dataset) : [];
+  const countWith = (ds, st) => { let n = 0; for (const d of ds) if (match(d, st)) n++; return n; };
+  const chipLabel = (g, v) => { const i = form && [...form.querySelectorAll(`input[name="${g}"]`)].find(x => x.value === v); return i ? i.nextElementSibling.firstChild.textContent.trim() : v; };
+  // Đếm số căn cho từng lựa chọn (theo các lọc khác đang chọn); lựa chọn 0 căn thì mờ đi
+  function facets(ds, st) {
+    if (!form || !allIn) return;
+    for (const g of GROUPS) for (const i of form.querySelectorAll(`input[name="${g}"]`)) {
+      if (!i.value) continue;
+      const n = countWith(ds, { ...st, [g]: g === 'gia' || g === 'dt' ? rng(i.value) : i.value });
+      const c = i.nextElementSibling.querySelector('.c'); if (c) c.textContent = n;
+      const zero = n === 0 && !i.checked;
+      i.disabled = zero; i.parentNode.classList.toggle('zero', zero);
+    }
+  }
+  function paintPills(st) {
+    const box = $('[data-pills]'); if (!box || !form) return;
+    const pills = GROUPS.filter(g => form.elements[g] && (form.elements[g].value || '')).map(g => [g, chipLabel(g, form.elements[g].value)]);
+    const pk = PKEYS.filter(([k]) => has(st.p, k));
+    for (const [k, f] of pk) pills.push([`p:${k}`, f(st.p)]);
+    if (st.q && !pk.length) pills.push(['q', `“${st.q}”`]);
+    box.innerHTML = pills.map(([g, l]) => `<button type="button" data-clear="${g}" aria-label="Bỏ lọc ${esc(l)}">${esc(l)}<span aria-hidden="true">×</span></button>`).join('') + (pills.length > 1 ? '<button type="button" class="clr-all" data-clear="*">Xoá hết</button>' : '');
+    const hint = $('[data-hint]'), h = hintTxt(st.p);
+    if (hint) { hint.hidden = !h.length; hint.innerHTML = h.length ? `Hiểu là: <b>${h.map(esc).join(' · ')}</b>` : ''; }
+    const fn = form.querySelector('.f-n'), k = ['tower', 'dt', 'int', 'dir'].filter(g => form.elements[g] && form.elements[g].value).length;
+    if (fn) { fn.hidden = !k; fn.textContent = k; }
+  }
+  // Không có căn: gợi ý bỏ bớt điều kiện nào thì có căn
+  function suggest(ds, st) {
+    const box = $('[data-sugg]'); if (!box) return;
+    const opts = [];
+    for (const g of GROUPS) if (st[g]) { const n = countWith(ds, { ...st, [g]: g === 'gia' || g === 'dt' ? null : '' }); if (n) opts.push([g, `Bỏ “${chipLabel(g, form.elements[g].value)}”`, n]); }
+    for (const [k, f] of PKEYS) if (has(st.p, k)) { const n = countWith(ds, { ...st, p: drop(st.p, k) }); if (n) opts.push([`p:${k}`, `Bỏ “${f(st.p)}”`, n]); }
+    if (st.p.pmax) { const ok = ds.filter(d => +d.price && match(d, { ...st, p: drop(st.p, 'price') }) && (!st.p.pmin || +d.price >= st.p.pmin)).map(d => +d.price).sort((a, b) => a - b); if (ok.length) { const v = ok[0]; opts.push([`set:${toQ({ ...st.p, pmax: v })}`, `Nâng ngân sách lên ${trTxt(v)}`, ok.filter(x => x <= v).length, 1]); } }
+    if (st.q && !PKEYS.some(([k]) => has(st.p, k))) { const n = countWith(ds, { ...st, p: {} }); if (n) opts.push(['q', `Bỏ “${st.q}”`, n]); }
+    opts.sort((a, b) => (b[3] || 0) - (a[3] || 0) || b[2] - a[2]);
+    box.innerHTML = opts.slice(0, 3).map(([g, l, n]) => `<button type="button" class="btn btn-soft" data-clear="${esc(g)}">${esc(l)} → ${n} căn</button>`).join('');
+  }
+  function clearG(g) {
+    if (!form) return;
+    if (g === '*') { for (const x of GROUPS) clearG(x); form.elements.q.value = ''; return; }
+    if (g === 'q') { form.elements.q.value = ''; return; }
+    if (g.startsWith('p:')) { form.elements.q.value = toQ(drop(parseQ(form.elements.q.value), g.slice(2))); return; }
+    if (g.startsWith('set:')) { form.elements.q.value = g.slice(4); return; }
+    const first = form.querySelector(`input[name="${g}"][value=""]`); if (first) first.checked = true;
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-clear]'); if (!b) return; clearG(b.dataset.clear); pg = 1; apply(true); });
   function renderPager(pages) {
     if (!pagerEl) { pagerEl = document.createElement('nav'); pagerEl.className = 'pager'; pagerEl.setAttribute('aria-label', 'Chuyển trang'); (moreBtn ? moreBtn.parentNode : grid).insertAdjacentElement(moreBtn ? 'beforebegin' : 'afterend', pagerEl);
-      pagerEl.addEventListener('click', async e => { const b = e.target.closest('button[data-p]'); if (!b || b.disabled) return; pg = +b.dataset.p; if (needAll && grid.children.length < (+grid.dataset.total || 0)) { b.classList.add('wait'); await needAll(); } apply(true); grid.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }
+      pagerEl.addEventListener('click', async e => { const b = e.target.closest('button[data-p]'); if (!b || b.disabled) return; pg = +b.dataset.p; if (needAll && !allIn) { b.classList.add('wait'); await needAll(); } apply(true); grid.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }
     pagerEl.hidden = pages <= 1; if (pages <= 1) { pagerEl.innerHTML = ''; return; }
     const list = []; for (let i = 1; i <= pages; i++) if (i === 1 || i === pages || Math.abs(i - pg) <= 1) list.push(i); else if (list[list.length - 1] !== '…') list.push('…');
     pagerEl.innerHTML = `<button type="button" data-p="${pg - 1}" ${pg === 1 ? 'disabled' : ''} aria-label="Trang trước">‹</button>` + list.map(i => i === '…' ? '<span>…</span>' : `<button type="button" data-p="${i}"${i === pg ? ' aria-current="page"' : ''}>${i}</button>`).join('') + `<button type="button" data-p="${pg + 1}" ${pg === pages ? 'disabled' : ''} aria-label="Trang sau">›</button>`;
@@ -106,58 +222,55 @@
   function apply(updateUrl) {
     if (!grid) return;
     const cards = [...grid.children];
-    const f = form ? new FormData(form) : new FormData();
-    const q = String(f.get('q') || '').trim().toLowerCase().replace(/\s+/g, '');
-    const type = f.get('type'), tower = f.get('tower'), int = f.get('int'), max = Number(f.get('max') || 0), dt = String(f.get('dt') || ''), [dMin, dMax] = dt ? dt.split('-').map(Number) : [0, 0], sort = f.get('sort') || 'new';
-    const by = { asc: (a, b) => (+a.dataset.price || 9e12) - (+b.dataset.price || 9e12), desc: (a, b) => +b.dataset.price - +a.dataset.price, area: (a, b) => +b.dataset.area - +a.dataset.area, new: (a, b) => (b.dataset.new || '').localeCompare(a.dataset.new || '') };
-    cards.sort(by[sort] || by.new).forEach(c => grid.appendChild(c));
+    const st = readState();
+    const by = { asc: (a, b) => (+a.dataset.price || 9e15) - (+b.dataset.price || 9e15), desc: (a, b) => +b.dataset.price - +a.dataset.price, area: (a, b) => +b.dataset.area - +a.dataset.area, new: (a, b) => (b.dataset.new || '').localeCompare(a.dataset.new || '') };
+    cards.sort(by[st.sort] || by.new).forEach(c => grid.appendChild(c));
     let n = 0;
     for (const c of cards) {
-      const d = c.dataset;
-      const ok = !c.classList.contains('gone') && (!q || d.id.toLowerCase().includes(q)) && (!type || d.type === type) && (!tower || d.tower === tower) && (!int || d.int === int) && (!max || (Number(d.price) && Number(d.price) <= max)) && (!dt || (+d.area >= dMin && +d.area < dMax));
+      const ok = !c.classList.contains('gone') && match(c.dataset, st);
       c.hidden = !ok;
       c.classList.toggle('more-hidden', ok && (n < (pg - 1) * PAGE || n >= pg * PAGE));
       if (ok) n++;
     }
-    const _tot = +grid.dataset.total || 0, _flt = form && [...f].some(([k, v]) => v && k !== 'sort');
-    const dem = $('#dem'); if (dem) dem.textContent = !_flt && _tot > cards.length ? _tot : n;
-    const rong = $('#rong'); if (rong) rong.hidden = n > 0;
-    if (moreBtn) moreBtn.hidden = true;
+    const filtered = !!st.q || GROUPS.some(g => st[g]);
     const totalAll = +grid.dataset.total || 0;
-    const filtered = form && [...f].some(([k, v]) => v && k !== 'sort');
-    const count = !filtered && totalAll > cards.length ? totalAll : n;
+    const count = !filtered && !allIn ? Math.max(totalAll, n) : n;
+    const dem = $('#dem'); if (dem) dem.textContent = count;
+    $$('[data-go]').forEach(e => { e.textContent = count; });
+    const ds = live();
+    const rong = $('#rong'); if (rong) { rong.hidden = n > 0; if (!n) suggest(ds, st); }
+    if (moreBtn) moreBtn.hidden = true;
     const pages = Math.max(1, Math.ceil(count / PAGE));
     if (pg > pages) { pg = pages; return apply(updateUrl); }
     renderPager(pages);
-    const active = form && [...f].some(([k, v]) => v && k !== 'sort');
-    const rs = $('[data-reset]'); if (rs) rs.hidden = !active;
-    const fn = form && form.querySelector('.f-n'); if (fn) { const k = [...f].filter(([k, v]) => v && !['q', 'sort'].includes(k)).length; fn.hidden = !k; fn.textContent = k; }
+    facets(ds, st); paintPills(st);
     if (updateUrl && form) {
       const p = new URLSearchParams();
-      for (const [k, v] of f) if (v && !(k === 'sort' && v === 'new')) p.set(k, v);
+      for (const [k, v] of new FormData(form)) if (v && !(k === 'sort' && v === 'new')) p.set(k, v);
       if (pg > 1) p.set('trang', pg);
       history.replaceState(null, '', (p.toString() ? '?' + p : location.pathname) + location.hash);
     }
   }
   if (grid) {
+    const tg = form && form.querySelector('.f-toggle'), setOpen = o => { if (!form) return; form.classList.toggle('open', o); if (tg) tg.setAttribute('aria-expanded', o); };
     if (form) {
       const params = new URLSearchParams(location.search);
       let any = false;
       for (const [k, v] of params) {
+        if (k === 'max' && +v) { form.elements.q.value = `dưới ${trTxt(+v)}`; any = true; continue; } // link cũ ?max=
         const el = form.elements[k]; if (!el) continue; any = true;
         if (el instanceof RadioNodeList) { for (const r of el) r.checked = r.value === v; } else el.value = v;
       }
-      form.addEventListener('change', () => { pg = 1; apply(true); });
-      const tg = form.querySelector('.f-toggle'), setOpen = o => { form.classList.toggle('open', o); if (tg) tg.setAttribute('aria-expanded', o); };
+      if (['tower', 'dt', 'int', 'dir'].some(g => params.get(g))) setOpen(true);
+      document.addEventListener('change', e => { if (e.target.form === form || e.target.getAttribute('form') === 'loc') { pg = 1; apply(true); } });
       if (tg) tg.addEventListener('click', () => setOpen(!form.classList.contains('open')));
-      form.querySelector('[data-close-f]')?.addEventListener('click', () => { setOpen(false); grid.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-      document.querySelectorAll('a[href$="#danh-sach"]').forEach(a => a.addEventListener('click', () => { if (location.pathname === '/' || a.pathname === location.pathname) setOpen(true); }));
-      form.addEventListener('input', e => { if (e.target.name === 'q') { pg = 1; apply(true); } });
-      const rs = $('[data-reset]'); if (rs) rs.addEventListener('click', () => { form.reset(); pg = 1; apply(true); });
+      let tq; form.addEventListener('input', e => { if (e.target.name === 'q') { clearTimeout(tq); tq = setTimeout(() => { pg = 1; apply(true); }, 180); } });
+      form.addEventListener('submit', e => { e.preventDefault(); form.elements.q.blur(); pg = 1; apply(true); ($('.res-bar') || $('#danh-sach'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      document.querySelectorAll('a[href$="#loc"]').forEach(a => a.addEventListener('click', e => { if (a.pathname !== location.pathname) return; e.preventDefault(); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
       if (any && location.pathname === '/') setTimeout(() => $('#danh-sach')?.scrollIntoView(), 50);
     }
     apply(false);
-    // trang chỉ tải sẵn 48 căn; phần còn lại nạp sau khi trang đã hiện
+    // trang chỉ tải sẵn 48 căn; phần còn lại nạp ngay khi rảnh để bộ lọc đếm đúng
     const total = +grid.dataset.total || 0, sc = grid.dataset.scope ? JSON.parse(grid.dataset.scope) : null;
     if (sc && total > grid.children.length) {
       const loadRest = () => getArchive().then(d => {
@@ -165,14 +278,14 @@
         const en = document.documentElement.lang === 'en';
         const html = (d.units || []).map(norm).filter(u => u && !u.goneAt && !have.has(u.id) && scopeOk(sc, u)).map(u => cardHtml(u)).join('');
         if (!en) grid.insertAdjacentHTML('beforeend', html);
-        apply(false); paintSaved();
+        allIn = true; apply(false); paintSaved();
       }).catch(() => { });
       let loadP = null; const once = () => (loadP ||= loadRest()); needAll = once;
       form && form.addEventListener('change', once, { capture: true });
       form && form.addEventListener('input', once, { capture: true });
       if (location.search) once();
-      const pgr = document.querySelector('.pager'); if ('IntersectionObserver' in window && pgr) new IntersectionObserver((es, o) => { if (es.some(e => e.isIntersecting)) { o.disconnect(); once(); } }, { rootMargin: '400px' }).observe(pgr);
-    }
+      else (window.requestIdleCallback || (f => setTimeout(f, 1200)))(once);
+    } else { allIn = true; apply(false); }
   }
 
   // ---------- Trang căn đã lưu ----------
