@@ -255,31 +255,31 @@ function card(x, i = 9) {
 </div></article>`;
 }
 // Bộ lọc duy nhất: ô gõ nhu cầu (hiểu "2pn s3 full dưới 12tr") + chip có đếm số căn, tự ẩn lựa chọn không còn căn.
-const BUDGET_RENT = [[0, 8e6, 'Đến 8 tr'], [8e6, 10e6, '8–10 tr'], [10e6, 12e6, '10–12 tr'], [12e6, 15e6, '12–15 tr'], [15e6, 20e6, '15–20 tr'], [20e6, 1e12, 'Trên 20 tr']];
-const BUDGET_SALE = [[0, 4e9, 'Đến 4 tỷ'], [4e9, 5e9, '4–5 tỷ'], [5e9, 6e9, '5–6 tỷ'], [6e9, 8e9, '6–8 tỷ'], [8e9, 10e9, '8–10 tỷ'], [10e9, 1e15, 'Trên 10 tỷ']];
+const BUDGET_RENT = [[0, 8e6, 'Đến 8 tr', '≤ 8tr'], [8e6, 10e6, '8–10 tr', '8–10tr'], [10e6, 12e6, '10–12 tr', '10–12tr'], [12e6, 15e6, '12–15 tr', '12–15tr'], [15e6, 20e6, '15–20 tr', '15–20tr'], [20e6, 1e12, 'Trên 20 tr', '> 20tr']];
+const BUDGET_SALE = [[0, 4e9, 'Đến 4 tỷ', '≤ 4 tỷ'], [4e9, 5e9, '4–5 tỷ'], [5e9, 6e9, '5–6 tỷ'], [6e9, 8e9, '6–8 tỷ'], [8e9, 10e9, '8–10 tỷ'], [10e9, 1e15, 'Trên 10 tỷ', '> 10 tỷ']];
 // Cỡ căn thực tế ở Lumi: 1PN ~42 m²; 2PN ~54 / ~62 / ~74 m²; 3PN 81–85 / 95–101 / 106–120 m²
-const AREA_BANDS = [[0, 50, 'Dưới 50 m²'], [50, 58, '50–58 m²'], [58, 68, '58–68 m²'], [68, 78, '68–78 m²'], [78, 90, '78–90 m²'], [90, 104, '90–104 m²'], [104, 999, 'Từ 104 m²']];
+const AREA_BANDS = [[0, 50, 'Dưới 50 m²', '< 50m²'], [50, 58, '50–58 m²', '50–58m²'], [58, 68, '58–68 m²', '58–68m²'], [68, 78, '68–78 m²', '68–78m²'], [78, 90, '78–90 m²', '78–90m²'], [90, 104, '90–104 m²', '90–104m²'], [104, 999, 'Từ 104 m²', '≥ 104m²']];
 const DIRS = ['Đông Nam', 'Tây Bắc', 'Đông Bắc', 'Tây Nam'];
 function filters(list, { noTower = false, noType = false, sale = false, hero = false } = {}) {
   const cnt = f => list.filter(f).length;
   const group = (name, legend, opts) => {
     const live = opts.filter(o => o[2] > 0);
     if (live.length < 2) return '';
-    return `<fieldset class="f-row" data-g="${name}"><legend class="f-label">${legend}</legend><div class="chips">${[['', 'Tất cả'], ...live].map(([v, l, n], i) => `<label><input type="radio" name="${name}" value="${v}"${i ? '' : ' checked'}><span>${l}${n === undefined ? '' : `<i class="c">${n}</i>`}</span></label>`).join('')}</div></fieldset>`;
+    return `<fieldset class="f-row" data-g="${name}"><legend class="f-label">${legend}</legend><div class="chips">${[['', 'Tất cả'], ...live].map(([v, l, n, s], i) => `<label${i ? '' : ' class="all"'}><input type="radio" name="${name}" value="${v}"${i ? '' : ' checked'}><span>${s ? `<b class="lg">${l}</b><b class="sm">${s}</b>` : l}${n === undefined ? '' : `<i class="c">${n}</i>`}</span></label>`).join('')}</div></fieldset>`;
   };
-  const typeG = noType ? '' : group('type', 'Loại căn', Object.keys(TYPES).map(t => [t, TYPES[t].short, cnt(x => x.type === t)]));
-  const giaG = group('gia', 'Ngân sách', (sale ? BUDGET_SALE : BUDGET_RENT).map(([a, b, l]) => [`${a}-${b}`, l, cnt(x => x.price > a && x.price <= b)]));
+  const typeG = noType ? '' : group('type', 'Loại căn', Object.keys(TYPES).map(t => [t, TYPES[t].short, cnt(x => x.type === t), /^\dPN$/.test(t) ? t : TYPES[t].short]));
+  const giaG = group('gia', 'Ngân sách', (sale ? BUDGET_SALE : BUDGET_RENT).map(([a, b, l, s]) => [`${a}-${b}`, l, cnt(x => x.price > a && x.price <= b), s]));
   const towerG = noTower ? '' : group('tower', 'Tòa', TOWER_ORDER.map(t => [t, t, cnt(x => x.tower === t)]));
-  const dtG = group('dt', 'Diện tích', AREA_BANDS.map(([a, b, l]) => [`${a}-${b}`, l, cnt(x => x.area >= a && x.area < b)]));
-  const intG = group('int', 'Nội thất', [['full', 'Full nội thất', cnt(x => x.intKey === 'full')], ['basic', 'Cơ bản', cnt(x => x.intKey === 'basic')]]);
-  const dirG = group('dir', 'Hướng ban công', DIRS.map(d => [d, d, cnt(x => x.dir === d)]));
+  const dtG = group('dt', 'Diện tích', AREA_BANDS.map(([a, b, l, s]) => [`${a}-${b}`, l, cnt(x => x.area >= a && x.area < b), s]));
+  const intG = group('int', 'Nội thất', [['full', 'Full nội thất', cnt(x => x.intKey === 'full'), 'Full đồ'], ['basic', 'Cơ bản', cnt(x => x.intKey === 'basic')]]);
+  const dirG = group('dir', 'Hướng', DIRS.map(d => [d, d, cnt(x => x.dir === d)]));
   const more = towerG + dtG + intG + dirG;
   const ex = sale ? '2PN S3 dưới 6 tỷ' : '2PN S3 full dưới 12tr';
   return `<form class="filters${hero ? ' f-hero' : ''}" id="loc" role="search" aria-label="Lọc căn hộ" action="${hero ? '/#danh-sach' : '#danh-sach'}" method="get">
 <label class="f-q"><span class="sr">Gõ nhu cầu hoặc mã căn</span>${I.search}<input type="search" name="q" placeholder="Gõ: ${esc(ex)}" autocomplete="off" enterkeyhint="search"></label>
 <p class="f-hint" data-hint hidden></p>
 ${typeG}${giaG}
-${more ? `<button type="button" class="f-toggle" aria-expanded="false" aria-controls="f-more"><span>Thêm: ${[towerG && 'tòa', dtG && 'diện tích', intG && 'nội thất', dirG && 'hướng'].filter(Boolean).join(', ')}</span><b class="f-n" hidden></b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+${more ? `<button type="button" class="f-toggle" aria-expanded="false" aria-controls="f-more"><span>Lọc thêm: ${[towerG && 'tòa', dtG && 'diện tích', intG && 'nội thất', dirG && 'hướng'].filter(Boolean).join(', ')}</span><b class="f-n" hidden></b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
 <div class="f-more" id="f-more">${more}</div>` : ''}
 <button type="submit" class="btn btn-lamp f-go">Xem <b data-go>${list.length}</b> căn</button>
 </form>`;

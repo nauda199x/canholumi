@@ -168,7 +168,7 @@
   }
   const live = () => grid ? [...grid.children].filter(c => !c.classList.contains('gone')).map(c => c.dataset) : [];
   const countWith = (ds, st) => { let n = 0; for (const d of ds) if (match(d, st)) n++; return n; };
-  const chipLabel = (g, v) => { const i = form && [...form.querySelectorAll(`input[name="${g}"]`)].find(x => x.value === v); return i ? i.nextElementSibling.firstChild.textContent.trim() : v; };
+  const chipLabel = (g, v) => { const i = form && [...form.querySelectorAll(`input[name="${g}"]`)].find(x => x.value === v); if (!i) return v; const sp = i.nextElementSibling; return (sp.querySelector('.lg') || sp.firstChild).textContent.trim(); };
   // Đếm số căn cho từng lựa chọn (theo các lọc khác đang chọn); lựa chọn 0 căn thì mờ đi
   function facets(ds, st) {
     if (!form || !allIn) return;
@@ -264,6 +264,10 @@
       if (['tower', 'dt', 'int', 'dir'].some(g => params.get(g))) setOpen(true);
       document.addEventListener('change', e => { if (e.target.form === form || e.target.getAttribute('form') === 'loc') { pg = 1; apply(true); } });
       if (tg) tg.addEventListener('click', () => setOpen(!form.classList.contains('open')));
+      // Bấm lại chip đang chọn để bỏ chọn (thay cho nút "Tất cả")
+      let wasOn = null;
+      form.addEventListener('pointerdown', e => { const l = e.target.closest('.chips label'); wasOn = l && l.querySelector('input').checked ? l : null; });
+      form.addEventListener('click', e => { const l = e.target.closest('.chips label'); if (l && l === wasOn && l.querySelector('input').value) { e.preventDefault(); clearG(l.querySelector('input').name); pg = 1; apply(true); } wasOn = null; });
       let tq; form.addEventListener('input', e => { if (e.target.name === 'q') { clearTimeout(tq); tq = setTimeout(() => { pg = 1; apply(true); }, 180); } });
       form.addEventListener('submit', e => { e.preventDefault(); form.elements.q.blur(); pg = 1; apply(true); ($('.res-bar') || $('#danh-sach'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       document.querySelectorAll('a[href$="#loc"]').forEach(a => a.addEventListener('click', e => { if (a.pathname !== location.pathname) return; e.preventDefault(); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
