@@ -134,6 +134,7 @@ const I = {
   filter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v2l-7 7v6l-4-2v-4L3 7V5Z"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l2 2h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2Zm3 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/></svg>',
   share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7l-6.7 3.4a3 3 0 1 0 0 3.2L15 17a3 3 0 1 0 3-1Z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-4.2-4.2-1.4 1.4L9 19 21 7l-1.4-1.4Z"/></svg>',
 };
 const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${Object.entries(I).map(([k, v]) => v.replace('<svg viewBox="0 0 24 24" aria-hidden="true">', `<symbol id="i-${k}" viewBox="0 0 24 24">`).replace('</svg>', '</symbol>')).join('')}</svg>`;
@@ -204,7 +205,7 @@ ${body}
 <nav class="mbar" aria-label="Liên hệ nhanh">
   <a href="tel:${PHONE}">${I.phone}<span>Gọi</span></a>
   <a class="mbar-zalo" href="${ZALO}" rel="nofollow">${I.chat}<span>Nhắn Zalo</span></a>
-  <a href="/#danh-sach">${I.filter}<span>Tìm căn</span></a>
+  <a href="/#loc" data-find>${I.filter}<span>Tìm căn</span></a>
 </nav>
 <script>window.LIVE_URL=${JSON.stringify(LIVE_URL)};</script>
 <script src="/assets/site.js?v=${ASSET_VER}" defer></script>
@@ -241,7 +242,7 @@ const faqHtml = (faq, h = 'Câu hỏi thường gặp') => `<section class="faq 
 // ---------- Thẻ căn ----------
 function card(x, i = 9) {
   const img = x.imgs[0];
-  return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-img="${esc((x.img || [])[0] || '')}" data-new="${score(x)}${x.updated || ''}">
+  return `<article class="card" data-id="${esc(x.id)}" data-rent="${x.isRent ? 1 : 0}" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-dir="${esc(x.dir)}" data-price="${x.price}" data-area="${x.area || 0}" data-img="${esc((x.img || [])[0] || '')}" data-new="${score(x)}${x.updated || ''}">
 <a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(x.title)}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<img src="/img/lumi/${fillFor(x.id)}-480.webp" alt="" loading="lazy" decoding="async" width="480" height="360"><span class="fillnote">Ảnh căn đang cập nhật</span>`}
 <span class="tags">${x.real ? '<span class="tag tag-real">Ảnh thật</span>' : x.imgs.length ? '<span class="tag">Ảnh minh hoạ</span>' : '<span class="tag">Ảnh tiện ích</span>'}${x.intKey === 'full' ? '<span class="tag tag-full">Full nội thất</span>' : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
 <button class="save" type="button" data-save="${esc(x.id)}" aria-pressed="false" aria-label="Lưu căn ${esc(x.id)}">${I.heart}</button>
@@ -253,29 +254,40 @@ function card(x, i = 9) {
 <p class="code">Mã ${esc(x.id)}</p>
 </div></article>`;
 }
-function filters(list, { noTower = false, noType = false, sale = false } = {}) {
-  const towers = TOWER_ORDER.filter(t => list.some(x => x.tower === t));
-  const types = Object.keys(TYPES).filter(t => list.some(x => x.type === t));
-  const prices = sale ? [4, 5, 6, 8, 10].map(v => [v * 1e9, `${v} tỷ`]) : [8, 10, 12, 15, 20].map(v => [v * 1e6, `${v} triệu`]);
-  const chips = (name, opts) => `<div class="chips">${[['', 'Tất cả'], ...opts].map(([v, l], i) => `<label><input type="radio" name="${name}" value="${v}"${i ? '' : ' checked'}><span>${l}</span></label>`).join('')}</div>`;
-  return `<form class="filters" id="loc" aria-label="Lọc căn hộ" onsubmit="return false">
-<div class="f-row f-top"><label class="f-q"><span class="sr">Tìm theo mã căn</span><input type="search" name="q" placeholder="Tìm mã căn, ví dụ ${esc(list[0]?.id || 'Thue2N.87')}" autocomplete="off"></label><button type="button" class="f-toggle" aria-expanded="false" aria-controls="f-more">${I.filter}<span>Bộ lọc</span><b class="f-n" hidden></b></button></div>
-<div class="f-more" id="f-more"><div class="f-row f-sel">
-<label class="sel"><span>Giá tối đa</span><select name="max"><option value="">Mọi mức giá</option>${prices.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
-<label class="sel"><span>Diện tích</span><select name="dt"><option value="">Mọi diện tích</option>${areaOpts(list)}</select></label>
-<label class="sel"><span>Sắp xếp</span><select name="sort"><option value="new">Ảnh thật trước</option><option value="asc">Giá thấp trước</option><option value="desc">Giá cao trước</option><option value="area">Diện tích lớn</option></select></label></div>
-${!noType && types.length > 1 ? `<fieldset class="f-row"><legend class="f-label">Loại căn</legend>${chips('type', types.map(t => [t, TYPES[t].short]))}</fieldset>` : ''}
-${!noTower && towers.length > 1 ? `<fieldset class="f-row"><legend class="f-label">Tòa</legend>${chips('tower', towers.map(t => [t, t]))}</fieldset>` : ''}
-${uniq(list.map(x => x.intKey).filter(Boolean)).length > 1 ? `<fieldset class="f-row"><legend class="f-label">Nội thất</legend>${chips('int', [['full', 'Full nội thất'], ['basic', 'Cơ bản']])}</fieldset>` : ''}
-<p class="f-done"><button type="button" class="btn btn-lamp" data-close-f>Xem kết quả</button></p></div>
-<p class="result" aria-live="polite"><b id="dem">${list.length}</b> căn phù hợp <button type="button" class="reset" data-reset hidden>Xoá bộ lọc</button></p>
+// Bộ lọc duy nhất: ô gõ nhu cầu (hiểu "2pn s3 full dưới 12tr") + chip có đếm số căn, tự ẩn lựa chọn không còn căn.
+const BUDGET_RENT = [[0, 8e6, 'Đến 8 tr'], [8e6, 10e6, '8–10 tr'], [10e6, 12e6, '10–12 tr'], [12e6, 15e6, '12–15 tr'], [15e6, 20e6, '15–20 tr'], [20e6, 1e12, 'Trên 20 tr']];
+const BUDGET_SALE = [[0, 4e9, 'Đến 4 tỷ'], [4e9, 5e9, '4–5 tỷ'], [5e9, 6e9, '5–6 tỷ'], [6e9, 8e9, '6–8 tỷ'], [8e9, 10e9, '8–10 tỷ'], [10e9, 1e15, 'Trên 10 tỷ']];
+// Cỡ căn thực tế ở Lumi: 1PN ~42 m²; 2PN ~54 / ~62 / ~74 m²; 3PN 81–85 / 95–101 / 106–120 m²
+const AREA_BANDS = [[0, 50, 'Dưới 50 m²'], [50, 58, '50–58 m²'], [58, 68, '58–68 m²'], [68, 78, '68–78 m²'], [78, 90, '78–90 m²'], [90, 104, '90–104 m²'], [104, 999, 'Từ 104 m²']];
+const DIRS = ['Đông Nam', 'Tây Bắc', 'Đông Bắc', 'Tây Nam'];
+function filters(list, { noTower = false, noType = false, sale = false, hero = false } = {}) {
+  const cnt = f => list.filter(f).length;
+  const group = (name, legend, opts) => {
+    const live = opts.filter(o => o[2] > 0);
+    if (live.length < 2) return '';
+    return `<fieldset class="f-row" data-g="${name}"><legend class="f-label">${legend}</legend><div class="chips">${[['', 'Tất cả'], ...live].map(([v, l, n], i) => `<label><input type="radio" name="${name}" value="${v}"${i ? '' : ' checked'}><span>${l}${n === undefined ? '' : `<i class="c">${n}</i>`}</span></label>`).join('')}</div></fieldset>`;
+  };
+  const typeG = noType ? '' : group('type', 'Loại căn', Object.keys(TYPES).map(t => [t, TYPES[t].short, cnt(x => x.type === t)]));
+  const giaG = group('gia', 'Ngân sách', (sale ? BUDGET_SALE : BUDGET_RENT).map(([a, b, l]) => [`${a}-${b}`, l, cnt(x => x.price > a && x.price <= b)]));
+  const towerG = noTower ? '' : group('tower', 'Tòa', TOWER_ORDER.map(t => [t, t, cnt(x => x.tower === t)]));
+  const dtG = group('dt', 'Diện tích', AREA_BANDS.map(([a, b, l]) => [`${a}-${b}`, l, cnt(x => x.area >= a && x.area < b)]));
+  const intG = group('int', 'Nội thất', [['full', 'Full nội thất', cnt(x => x.intKey === 'full')], ['basic', 'Cơ bản', cnt(x => x.intKey === 'basic')]]);
+  const dirG = group('dir', 'Hướng ban công', DIRS.map(d => [d, d, cnt(x => x.dir === d)]));
+  const more = towerG + dtG + intG + dirG;
+  const ex = sale ? '2PN S3 dưới 6 tỷ' : '2PN S3 full dưới 12tr';
+  return `<form class="filters${hero ? ' f-hero' : ''}" id="loc" role="search" aria-label="Lọc căn hộ" action="${hero ? '/#danh-sach' : '#danh-sach'}" method="get">
+<label class="f-q"><span class="sr">Gõ nhu cầu hoặc mã căn</span>${I.search}<input type="search" name="q" placeholder="Gõ: ${esc(ex)}" autocomplete="off" enterkeyhint="search"></label>
+<p class="f-hint" data-hint hidden></p>
+${typeG}${giaG}
+${more ? `<button type="button" class="f-toggle" aria-expanded="false" aria-controls="f-more"><span>Thêm: ${[towerG && 'tòa', dtG && 'diện tích', intG && 'nội thất', dirG && 'hướng'].filter(Boolean).join(', ')}</span><b class="f-n" hidden></b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+<div class="f-more" id="f-more">${more}</div>` : ''}
+<button type="submit" class="btn btn-lamp f-go">Xem <b data-go>${list.length}</b> căn</button>
 </form>`;
 }
-const AREA_BANDS = [[0, 50, 'Dưới 50 m²'], [50, 60, '50–60 m²'], [60, 70, '60–70 m²'], [70, 80, '70–80 m²'], [80, 100, '80–100 m²'], [100, 999, 'Từ 100 m²']];
-const areaOpts = list => AREA_BANDS.filter(([a, b]) => list.some(x => x.area >= a && x.area < b)).map(([a, b, l]) => `<option value="${a}-${b}">${l}</option>`).join('');
+const resBar = (list, sale) => `<div class="res-bar"><p class="result" aria-live="polite"><b id="dem">${list.length}</b> căn phù hợp</p><div class="f-pills" data-pills></div><a class="f-edit" href="#loc">Sửa bộ lọc</a><label class="sel sort"><span>Sắp xếp</span><select name="sort" form="loc"><option value="new">Ảnh thật trước</option><option value="asc">Giá thấp trước</option><option value="desc">Giá cao trước</option><option value="area">Diện tích lớn</option></select></label></div>`;
 const HTML_CAP = 48;
-const grid = (list, scope) => `<h2 class="sr">Danh sách căn</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}" data-total="${list.length}">${list.slice(0, HTML_CAP).map((x, i) => card(x, i)).join('')}</div>
-<p class="empty" id="rong" hidden>Chưa có căn khớp bộ lọc. <a href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE_FMT}</a> để được báo khi có căn phù hợp.</p>`;
+const grid = (list, scope, sale = false) => `${resBar(list, sale)}<h2 class="sr">Danh sách căn</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify(scope))}" data-total="${list.length}">${list.slice(0, HTML_CAP).map((x, i) => card(x, i)).join('')}</div>
+<div class="empty" id="rong" hidden><p>Chưa có căn khớp đúng yêu cầu.</p><p class="sugg" data-sugg></p><p><a href="${ZALO}" rel="nofollow">Nhắn Zalo ${PHONE_FMT}</a> để được báo khi có căn phù hợp.</p></div>`;
 
 // ---------- Thống kê ----------
 function stat(list) {
@@ -303,7 +315,7 @@ function listPage({ list, scope, h1, crumbs, canonical, title, desc, what, relat
   const body = `<section class="page-hero has-photo">${pic(hp, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}
 <div class="wrap">${bc.html}<h1>${esc(h1)}</h1><p class="lead">${introText(list, what, sale)}</p><p class="byline">Cập nhật ${DATE_LABEL} · tự đồng bộ với bảng hàng</p></div></section>
 ${related.length ? `<nav class="rel wrap" aria-label="Trang liên quan"><span>Xem thêm:</span>${related.map(([u, l]) => `<a href="${u}">${esc(l)}</a>`).join('')}</nav>` : ''}
-<section class="listing wrap" id="danh-sach">${filters(list, filterOpts)}${grid(sorted, scope)}</section>
+<section class="listing wrap" id="danh-sach">${filters(list, { ...filterOpts, sale })}${grid(sorted, scope, sale)}</section>
 ${extra}${faq.length ? faqHtml(faq) : ''}`;
   return layout({ title, desc, canonical, body, active, ogImage: sorted.find(x => x.imgs[0])?.imgs[0], jsonld: [ORG, bc.ld, itemList(sorted, h1), ...(faq.length ? [faqLd(faq)] : [])] });
 }
@@ -374,13 +386,7 @@ function homePage(all, meta) {
     <p class="hero-kicker"><span class="dot" aria-hidden="true"></span><b data-count="rent">${rent.length} căn</b> đang trống · cập nhật <span data-live="time">${upd}</span></p>
     <h1>Cho thuê căn hộ Lumi Hà Nội</h1>
     <p class="hero-sub">Quỹ căn hộ chung cư Lumi Hanoi đang cho thuê, lấy thẳng từ bảng hàng, mỗi căn có mã riêng và giá rõ ràng. Chọn căn ưng ý, gửi mã qua Zalo để hẹn xem nhà.</p>
-    <form class="hero-search" action="/" method="get" role="search" aria-label="Tìm căn hộ">
-      <label><span>Loại căn</span><select name="type"><option value="">Tất cả</option>${types.map(t => `<option value="${t}">${TYPES[t].short}</option>`).join('')}</select></label>
-      <label><span>Tòa</span><select name="tower"><option value="">Tất cả</option>${towers.map(t => `<option value="${t}">${t}</option>`).join('')}</select></label>
-      <label><span>Giá tối đa</span><select name="max"><option value="">Mọi mức giá</option>${[8, 10, 12, 15, 20].map(v => `<option value="${v * 1e6}">${v} triệu</option>`).join('')}</select></label>
-      <label><span>Diện tích</span><select name="dt"><option value="">Mọi diện tích</option>${areaOpts(rent)}</select></label>
-      <button class="btn btn-lamp" type="submit">Tìm căn</button>
-    </form>
+    ${filters(rent, { hero: true })}
   </div>
 </section>
 <section class="wrap prices" aria-label="Giá thuê theo loại căn">
@@ -390,7 +396,7 @@ function homePage(all, meta) {
 <nav class="wrap quick" aria-label="Tìm nhanh">${QUICK()}</nav>
 <section class="listing wrap" id="danh-sach">
   <div class="sec-head"><h2>Căn hộ Lumi đang cho thuê</h2><p>${s.real} căn có ảnh chụp thực tế · ${s.full} căn full nội thất</p></div>
-  ${filters(rent)}${grid(rent, { rent: 1 })}
+  ${grid(rent, { rent: 1 })}
 </section>
 <section class="amen">
   <div class="wrap">
