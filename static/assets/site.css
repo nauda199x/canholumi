@@ -506,3 +506,9 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
 [data-g=tower] .chips{grid-template-columns:repeat(5,1fr)}
 [data-g=dir] .chips,[data-g=int] .chips{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Đổi ngôn ngữ */
+.nav .langs{display:flex;flex-wrap:wrap;gap:.15rem .55rem;align-items:center;margin-left:.4rem;padding-left:.6rem;border-left:1px solid rgba(255,255,255,.25)}
+.nav .langs .lg{font-size:.82em;opacity:.85;white-space:nowrap}
+.nav .langs .lg:hover{opacity:1}
+@media (max-width: 900px){.nav .langs{margin:.4rem 0 0;padding:.5rem 0 0;border-left:0;border-top:1px solid rgba(255,255,255,.2)}}

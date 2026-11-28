@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { L as LANGS, LANG_ORDER, HREFLANG, LANG_LABEL, OG_LOCALE, dirOf } from './i18n.mjs';
 
 const SITE = 'https://canholumi.com';
 const BRAND = 'Căn Hộ Lumi';
@@ -146,8 +147,15 @@ let FOOT_LINKS = '';
 let QUICK = () => '';
 function layout({ title: rawTitle, desc, canonical, body, jsonld = [], ogImage, noindex = false, active = '', lang = 'vi', alt = null, preload = '', modified }) {
   const title = T(rawTitle);
+  if (!alt && canonical === '/') alt = HOME_ALT;
+  const fl = lang === 'vi' ? null : LANGS[lang];
+  const home = lang === 'vi' ? '/' : `/${lang}/`;
+  // Nút đổi ngôn ngữ: dùng đúng trang tương ứng (alt) nếu có, không thì về trang chủ ngôn ngữ đó.
+  const altMap = Object.fromEntries((alt || []).map(([l, u]) => [l, u]));
+  const langLinks = LANG_ORDER.filter(l => l !== lang).map(l => `<a class="lg" href="${altMap[HREFLANG[l]] || (l === 'vi' ? '/' : `/${l}/`)}" hreflang="${HREFLANG[l]}" lang="${HREFLANG[l]}">${LANG_LABEL[l]}</a>`).join('');
+  const navHtml = fl ? `<a href="${home}" aria-current="page">${fl.homeLink}</a>` : NAV.map(([h, l]) => `<a href="${h}"${active === h ? ' aria-current="page"' : ''}>${l}</a>`).join('');
   return `<!doctype html>
-<html lang="${lang}">
+<html lang="${fl ? fl.htmlLang : lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -157,7 +165,7 @@ function layout({ title: rawTitle, desc, canonical, body, jsonld = [], ogImage, 
 <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}">
 ${alt ? alt.map(([l, u]) => `<link rel="alternate" hreflang="${l}" href="${SITE}${u}">`).join('\n') : ''}
 <meta property="og:type" content="website">
-<meta property="og:locale" content="${lang === 'en' ? 'en_US' : 'vi_VN'}">
+<meta property="og:locale" content="${OG_LOCALE[lang] || 'vi_VN'}">
 <meta property="og:site_name" content="${BRAND}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(D(desc))}">
@@ -180,18 +188,18 @@ ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replac
 </head>
 <body>
 ${SPRITE}
-<a class="skip" href="#noi-dung">${lang === 'en' ? 'Skip to content' : 'Bỏ qua menu'}</a>
+<a class="skip" href="#noi-dung">${fl ? fl.skip : 'Bỏ qua menu'}</a>
 <header class="top">
-  <a class="logo" href="${lang === 'en' ? '/en/' : '/'}" aria-label="${BRAND} – trang chủ"><img class="logo-img" src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi – Căn Hộ Lumi" width="122" height="60"><span class="sr">Căn Hộ Lumi</span></a>
-  <nav class="nav" id="nav" aria-label="Menu chính">${NAV.map(([h, l]) => `<a href="${h}"${active === h ? ' aria-current="page"' : ''}>${l}</a>`).join('')}<a href="/en/" lang="en"${active === '/en/' ? ' aria-current="page"' : ''}>English</a></nav>
-  <a class="saved-link" href="/da-luu/" aria-label="Căn đã lưu">${I.heart}<span class="saved-n" data-saved-count hidden>0</span></a>
-  <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow" aria-label="Nhắn Zalo ${PHONE_FMT}">${I.chat}<span>Zalo ${PHONE_FMT}</span></a>
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="nav" aria-label="Mở menu"><span></span><span></span><span></span></button>
+  <a class="logo" href="${home}" aria-label="${BRAND} – trang chủ"><img class="logo-img" src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi – Căn Hộ Lumi" width="122" height="60"><span class="sr">Căn Hộ Lumi</span></a>
+  <nav class="nav" id="nav" aria-label="${fl ? fl.nav : 'Menu chính'}">${navHtml}<span class="langs" role="group" aria-label="${fl ? fl.langs : 'Ngôn ngữ'}">${langLinks}</span></nav>
+  ${fl ? '' : `<a class="saved-link" href="/da-luu/" aria-label="Căn đã lưu">${I.heart}<span class="saved-n" data-saved-count hidden>0</span></a>`}
+  <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow" aria-label="${fl ? fl.zalo : 'Nhắn Zalo'} ${PHONE_FMT}">${I.chat}<span>Zalo ${PHONE_FMT}</span></a>
+  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="nav" aria-label="${fl ? fl.nav : 'Mở menu'}"><span></span><span></span><span></span></button>
 </header>
 <main id="noi-dung">
 ${body}
 </main>
-<footer class="foot">
+${fl ? langFoot(fl, home) : `<footer class="foot">
   <div class="foot-in">
     <div class="foot-col foot-about">
       <p class="foot-brand"><img src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi – Căn Hộ Lumi" width="122" height="60" loading="lazy"></p>
@@ -207,7 +215,7 @@ ${body}
   <a class="mbar-zalo" href="${ZALO}" rel="nofollow">${I.chat}<span>Nhắn Zalo</span></a>
   <a href="/#loc" data-find>${I.filter}<span>Tìm căn</span></a>
 </nav>
-<script>window.LIVE_URL=${JSON.stringify(LIVE_URL)};</script>
+`}<script>window.LIVE_URL=${JSON.stringify(LIVE_URL)};</script>
 <script src="/assets/site.js?v=${ASSET_VER}" defer></script>
 </body>
 </html>`;
@@ -433,7 +441,7 @@ ${faqHtml(faq)}
   return layout({
     title: `Cho thuê chung cư Lumi Hà Nội (Lumi Hanoi) – ${rent.length} căn, từ ${tr(s.min)} triệu`,
     desc: `Thuê chung cư Lumi Hanoi: ${rent.length} căn hộ 1PN, 2PN, 3PN đang trống, từ ${tr(s.min)} triệu/tháng, giá rõ ràng, tự cập nhật theo bảng hàng. Zalo ${PHONE_FMT}.`,
-    canonical: '/', body, active: '/', alt: [['vi', '/'], ['en', '/en/'], ['x-default', '/']],
+    canonical: '/', body, active: '/', alt: HOME_ALT,
     preload: `<link rel="preload" as="image" imagesrcset="${heroSet}" imagesizes="100vw" fetchpriority="high">`,
     jsonld: [ORG, COMPLEX, { '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND, url: SITE + '/', inLanguage: 'vi', potentialAction: { '@type': 'SearchAction', target: `${SITE}/?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }, itemList(rent, 'Căn hộ cho thuê Lumi Hà Nội'), faqLd(faq)],
   });
@@ -513,7 +521,7 @@ ${similar.length ? `<section class="listing wrap"><h2>Căn ${esc(x.t.short)} tư
     offers: { '@type': 'Offer', ...(x.price ? { price: x.price } : {}), priceCurrency: 'VND', businessFunction: `http://purl.org/goodrelations/v1#${x.isRent ? 'LeaseOut' : 'Sell'}`, availability: gone ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock', seller: { '@id': SITE + '/#agent' } },
     about: { '@type': 'Apartment', name: `${x.t.name} tòa ${x.tower} Lumi Hà Nội`, ...(x.type !== 'Duplex' ? { numberOfBedrooms: Number(x.type[0]), numberOfRooms: Number(x.type[0]) } : {}), ...(x.area ? { floorSize: { '@type': 'QuantitativeValue', value: x.area, unitCode: 'MTK' } } : {}), containedInPlace: { '@id': SITE + '/#lumi' }, address: COMPLEX.address },
   };
-  return layout({ title: `${x.isRent ? 'Cho thuê' : 'Bán'} ${x.t.code.toUpperCase()} Lumi Hà Nội ${x.tower}${x.area ? ` ${m2(x.area).replace(' ', '')}` : ''} ${x.priceText} (${x.id})`, desc, canonical: x.url, body, noindex: gone, ogImage: imgs[0], jsonld: [ORG, bc.ld, ld] });
+  return layout({ title: `${x.isRent ? 'Cho thuê' : 'Bán'} ${x.t.code.toUpperCase()} Lumi Hà Nội ${x.tower}${x.area ? ` ${m2(x.area).replace(' ', '')}` : ''} ${x.priceText} (${x.id})`, desc, canonical: x.url, body, noindex: gone, ogImage: imgs[0], alt: x.isRent && !gone ? unitAlt(x) : null, jsonld: [ORG, bc.ld, ld] });
 }
 
 // ---------- Trang nội dung ----------
@@ -633,18 +641,104 @@ function savedPage() {
 <section class="listing wrap"><div class="grid" id="saved-grid"></div><p class="empty" id="saved-empty">Chưa có căn nào được lưu. <a href="/#danh-sach">Xem căn đang cho thuê</a></p><p class="center"><button type="button" class="btn btn-zalo" id="saved-copy" hidden>${I.chat}Chép danh sách mã căn để gửi Zalo</button></p></section>`;
   return layout({ title: `Căn đã lưu | ${BRAND}`, desc: 'Danh sách căn hộ Lumi anh chị đã lưu.', canonical: '/da-luu/', noindex: true, body });
 }
-function enPage(all) {
+// ---------- Trang ngoại ngữ (en, ko, zh, ja) ----------
+const FOREIGN = ['en', 'ko', 'zh', 'ja'];
+const langUnitUrl = (x, lc) => `/${lc}/apartment/lumi-hanoi-${x.t.code}-${x.tower.toLowerCase()}-${slugId(x.id)}/`;
+const unitAlt = x => [['vi', x.url], ...FOREIGN.map(lc => [HREFLANG[lc], langUnitUrl(x, lc)]), ['x-default', x.url]];
+const HOME_ALT = [['vi', '/'], ...FOREIGN.map(lc => [HREFLANG[lc], `/${lc}/`]), ['x-default', '/']];
+function langFoot(fl, home) {
+  return `<footer class="foot">
+  <div class="foot-in">
+    <div class="foot-col foot-about">
+      <p class="foot-brand"><img src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi" width="122" height="60" loading="lazy"></p>
+      <p>${fl.about}</p>
+      <address>${fl.addr}<br><a href="tel:${PHONE_INTL}">${PHONE_INTL}</a> · <a href="${ZALO}" rel="nofollow">Zalo</a></address>
+    </div>
+    <div class="foot-col"><p class="foot-h">${fl.langs}</p>${LANG_ORDER.map(l => `<a href="${l === 'vi' ? '/' : `/${l}/`}" hreflang="${HREFLANG[l]}" lang="${HREFLANG[l]}">${LANG_LABEL[l]}</a>`).join('')}</div>
+  </div>
+  <p class="foot-note">${fl.note}</p>
+</footer>
+<nav class="mbar" aria-label="${fl.zalo}">
+  <a href="tel:${PHONE_INTL}">${I.phone}<span>${fl.callShort}</span></a>
+  <a class="mbar-zalo" href="${ZALO}" rel="nofollow">${I.chat}<span>Zalo</span></a>
+  <a href="${home}#danh-sach">${I.filter}<span>${fl.find}</span></a>
+</nav>
+`;
+}
+const lText = (lc, x) => {
+  const fl = LANGS[lc];
+  return { t: fl.type[x.type], i: fl.int[x.intKey || ''], d: dirOf(lc, x.dir), p: x.price ? fl.rent(x.price) : '' };
+};
+function langCard(x, lc, i = 9) {
+  const fl = LANGS[lc], v = lText(lc, x), url = langUnitUrl(x, lc);
+  const img = x.imgs[0];
+  return `<article class="card" data-id="${esc(x.id)}" data-rent="1" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}">
+<a class="card-media" href="${url}" tabindex="-1" aria-hidden="true">${img ? `<img src="${img.replace('w1280', 'w600')}" alt="${esc(fl.unitTitle(v.t, x.tower, x.area))}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async" width="600" height="450">` : `<img src="/img/lumi/${fillFor(x.id)}-480.webp" alt="" loading="lazy" decoding="async" width="480" height="360"><span class="fillnote">${fl.amen}</span>`}
+<span class="tags">${x.real ? `<span class="tag tag-real">${fl.real}</span>` : x.imgs.length ? `<span class="tag">${fl.illus}</span>` : ''}${x.intKey === 'full' ? `<span class="tag tag-full">${fl.int.full}</span>` : ''}</span>${x.imgs.length > 1 ? `<span class="count">${I.camera}${x.imgs.length}</span>` : ''}</a>
+<div class="card-body">
+<p class="price">${esc(v.p || 'Zalo')}</p>
+<h3><a href="${url}">${esc(v.t)} · ${lc === 'en' ? `${fl.tower} ${x.tower}` : `${x.tower}${fl.tower}`}</a></h3>
+<ul class="facts">${x.area ? `<li>${I.area}${x.area} m²</li>` : ''}${v.d ? `<li>${I.dir}${esc(v.d)}</li>` : ''}</ul>
+<p class="int">${I.sofa}${esc(v.i)}</p>
+<p class="code">${fl.code} ${esc(x.id)}</p>
+</div></article>`;
+}
+function langHome(all, lc) {
+  const fl = LANGS[lc];
   const rent = sortUnits(all.filter(x => x.isRent));
   const s = stat(rent);
   const types = ['1PN', '2PN', '3PN'].filter(k => rent.some(x => x.type === k));
-  const enCard = x => `<article class="card" data-id="${esc(x.id)}" data-rent="1" data-type="${x.type}" data-tower="${x.tower}" data-int="${x.intKey}" data-price="${x.price}" data-area="${x.area || 0}" data-new="${score(x)}${x.updated || ''}"><a class="card-media" href="${x.url}" tabindex="-1" aria-hidden="true">${x.imgs[0] ? `<img src="${x.imgs[0].replace('w1280', 'w600')}" alt="" loading="lazy" width="600" height="450">` : `<span class="noimg">${logoSvg()}</span>`}<span class="tags">${x.real ? '<span class="tag tag-real">Real photos</span>' : ''}${x.intKey === 'full' ? '<span class="tag tag-full">Furnished</span>' : ''}</span></a><div class="card-body"><p class="price">${x.price ? `${trEn(x.price)}M VND/month` : 'Contact'}</p><h3><a href="${x.url}">${x.t.en} · Tower ${x.tower}</a></h3><ul class="facts">${x.area ? `<li>${I.area}${x.area} m²</li>` : ''}${x.intKey ? `<li>${I.sofa}${INTERIORS[x.intKey].en}</li>` : ''}</ul><p class="code">Code ${esc(x.id)}</p></div></article>`;
-  const body = `<section class="page-hero has-photo">${pic(HERO, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}<div class="wrap"><h1>Lumi Hanoi apartments for rent</h1><p class="lead"><b>${s.n} apartments</b> available now at Lumi Hanoi (CapitaLand), Thang Long Avenue, West Hanoi. Rents from ${trEn(s.min)}M to ${trEn(s.max)}M VND per month. Listings sync with our live inventory every minute.</p>
-<p class="cta-row"><a class="btn btn-zalo" href="${ZALO}" rel="nofollow">${I.chat}Message on Zalo</a> <a class="btn btn-ghost" href="tel:${PHONE_INTL}">${I.phone}Call ${PHONE_INTL}</a></p></div></section>
-<section class="wrap en-sec"><h2>Rent by apartment type</h2>${priceTable(types.map(t => { const st = stat(rent.filter(x => x.type === t)); return [TYPES[t].en, st.n, `${trEn(st.min)}M`, `<b>${trEn(st.med)}M</b>`, `${trEn(st.max)}M`]; }), ['', 'Units', 'From', 'Median', 'Up to'])}<p class="muted">Monthly rent in million VND as listed by owners; final price is negotiable.</p></section>
-<section class="listing wrap" id="danh-sach"><h2>Available apartments</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify({ rent: 1, noAdd: 1 }))}">${rent.map(enCard).join('')}</div><p class="more-wrap"><button type="button" class="btn btn-line" id="more" hidden>Show more</button></p></section>
-<section class="amen"><div class="wrap"><div class="sec-head"><h2>Living at Lumi Hanoi</h2><p>According to CapitaLand Development, Lumi Hanoi offers more than 80 on-site amenities including three outdoor swimming pools. Tenants share the facilities with residents.</p></div>${amenityBento()}</div></section>
-<section class="wrap steps"><h2>How to rent</h2><ol><li><h3>Pick an apartment</h3><p>Note its code, e.g. ${esc(rent[0]?.id || '')}.</p></li><li><h3>Message us on Zalo ${PHONE_FMT}</h3><p>Send the code and your preferred viewing time.</p></li><li><h3>View and agree terms</h3><p>We arrange the viewing; rent, term and deposit are agreed with the owner.</p></li></ol></section>`;
-  return layout({ lang: 'en', title: `Lumi Hanoi Apartments for Rent – ${s.n} units from ${trEn(s.min)}M VND | ${BRAND}`, desc: `${s.n} apartments for rent at Lumi Hanoi (CapitaLand), Thang Long Avenue: 1, 2 and 3 bedrooms, furnished or basic, real photos, live availability. Zalo ${PHONE_FMT}.`, canonical: '/en/', body, active: '/en/', alt: [['vi', '/'], ['en', '/en/'], ['x-default', '/']], jsonld: [ORG, COMPLEX, itemList(rent, 'Lumi Hanoi apartments for rent')] });
+  const steps = fl.steps(esc(rent[0]?.id || ''), PHONE_FMT);
+  const body = `<section class="page-hero has-photo">${pic(HERO, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}<div class="wrap"><h1>${fl.h1}</h1><p class="lead">${fl.lead(s.n, fl.money(s.min), fl.money(s.max))}</p>
+<p class="cta-row"><a class="btn btn-zalo" href="${ZALO}" rel="nofollow">${I.chat}${fl.zalo}</a> <a class="btn btn-ghost" href="tel:${PHONE_INTL}">${I.phone}${fl.call} ${PHONE_INTL}</a></p></div></section>
+<section class="wrap en-sec"><h2>${fl.byType}</h2>${priceTable(types.map(t => { const st = stat(rent.filter(x => x.type === t)); return [fl.type[t], st.n, fl.money(st.min), `<b>${fl.money(st.med)}</b>`, fl.money(st.max)]; }), fl.cols)}<p class="muted">${fl.moneyNote}</p></section>
+<section class="listing wrap" id="danh-sach"><h2>${fl.available}</h2><div class="grid" id="ds" data-scope="${esc(JSON.stringify({ rent: 1, noAdd: 1 }))}">${rent.map((x, i) => langCard(x, lc, i)).join('')}</div><p class="more-wrap"><button type="button" class="btn btn-line" id="more" hidden>${fl.more}</button></p></section>
+<section class="amen"><div class="wrap"><div class="sec-head"><h2>${fl.living}</h2><p>${fl.livingText}</p></div>${amenityBento()}</div></section>
+<section class="wrap steps"><h2>${fl.how}</h2><ol>${steps.map(([h, p]) => `<li><h3>${h}</h3><p>${p}</p></li>`).join('')}</ol></section>`;
+  return layout({ lang: lc, title: fl.homeTitle(s.n, fl.money(s.min)), desc: fl.homeDesc(s.n, PHONE_FMT), canonical: `/${lc}/`, body, alt: HOME_ALT, jsonld: [ORG, COMPLEX, { ...itemList(rent, fl.h1), itemListElement: rent.slice(0, 60).map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: SITE + langUnitUrl(x, lc), name: fl.unitTitle(lText(lc, x).t, x.tower, x.area) })) }] });
+}
+function langUnit(x, all, lc) {
+  const fl = LANGS[lc], v = lText(lc, x);
+  const title = fl.unitTitle(v.t, x.tower, x.area);
+  const url = langUnitUrl(x, lc);
+  const dt = x.updated ? x.updated.split('-').reverse().join('/') : '';
+  const rows = [[fl.fType, v.t, I.bed], [fl.fArea, x.area ? `${x.area} m²` : '', I.area], [fl.fTower, x.tower, I.tower], [fl.fDir, v.d, I.dir], [fl.fInt, x.intKey ? v.i : '', I.sofa], [fl.fUpd, dt, I.check]].filter(r => r[1]);
+  const imgs = x.imgs;
+  const gallery = imgs.length ? `<div class="gal gal-${Math.min(imgs.length, 5)}">${imgs.slice(0, 5).map((u, i) => `<button type="button" class="gal-i" data-open="${i}" aria-label="${esc(fl.photo(i + 1, imgs.length))}"><img src="${i ? u.replace('w1280', 'w800') : u}" alt="${esc(title)} – ${esc(fl.photo(i + 1, imgs.length))}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async" width="1280" height="960">${i === 4 && imgs.length > 5 ? `<span class="gal-more">+${imgs.length - 5}</span>` : ''}</button>`).join('')}</div>
+<p class="g-note">${I.camera}${x.real ? fl.gReal(imgs.length) : fl.gIllus}</p>
+<dialog class="lb" aria-label="${fl.gallery}"><div class="lb-track">${imgs.map((u, i) => `<figure><img data-src="${u.replace('w1280', 'w1600')}" alt="${esc(title)} – ${esc(fl.photo(i + 1, imgs.length))}"><figcaption>${i + 1}/${imgs.length}</figcaption></figure>`).join('')}</div><button type="button" class="lb-x" aria-label="${fl.close}">×</button><button type="button" class="lb-p" aria-label="${fl.prev}">‹</button><button type="button" class="lb-n" aria-label="${fl.next}">›</button></dialog>`
+    : `<div class="gal gal-empty">${pic(HERO, { sizes: '(max-width: 900px) 100vw, 70vw', alt: 'Lumi Hanoi' })}<span class="noimg-note">${fl.gNone}</span></div>`;
+  const similar = all.filter(y => y.id !== x.id && y.isRent && y.type === x.type).sort((a, b) => (b.tower === x.tower) - (a.tower === x.tower) || score(b) - score(a) || Math.abs(a.price - x.price) - Math.abs(b.price - x.price)).slice(0, 8);
+  const descr = fl.desc(x, v.t, x.intKey ? v.i : '', v.d, v.p);
+  const bc = breadcrumbs([[fl.crumbHome, `/${lc}/`], [`${fl.code} ${x.id}`, url]]);
+  const body = `<div class="wrap">${bc.html}</div>
+<article class="unit wrap" data-unit="${esc(x.id)}">
+  <header class="u-head"><div><h1>${esc(title)}</h1><p class="u-sub">${fl.code} <b>${esc(x.id)}</b>${dt ? ` · ${dt}` : ''}${x.real ? ` · <span class="tag tag-real">${fl.real}</span>` : ''}</p></div>
+  <div class="u-actions"><button type="button" class="btn btn-soft" data-share aria-label="${fl.share}">${I.share}<span>${fl.share}</span></button></div></header>
+  ${gallery}
+  <div class="u-grid">
+    <div class="u-main">
+      <section><h2>${fl.details}</h2><dl class="u-facts">${rows.map(([k, val, ic]) => `<div>${ic}<dt>${k}</dt><dd>${esc(val)}</dd></div>`).join('')}</dl></section>
+      <section><h2>${fl.descH}</h2><p>${esc(descr)}</p></section>
+      <section><h2>${fl.living}</h2><div class="u-amen">${[['ho-boi-ngoai-troi-lumi-signature'], ['phong-gym-lumi-ha-noi'], ['khu-vui-choi-tre-em-lumi'], ['sanh-lounge-lumi-ha-noi']].map(([f]) => `<figure>${pic(photo(f), { sizes: '(max-width: 700px) 50vw, 15vw', alt: 'Lumi Hanoi' })}</figure>`).join('')}</div><p>${fl.livingText}</p></section>
+    </div>
+    <aside class="u-side"><div class="u-card">
+      <p class="u-price">${esc(v.p || 'Zalo')}</p>
+      <p class="u-meta">${esc(v.t)}${x.area ? ` · ${x.area} m²` : ''} · ${lc === 'en' ? `${fl.tower} ${x.tower}` : `${x.tower}${fl.tower}`}</p>
+      <a class="btn btn-zalo wide" href="${ZALO}" rel="nofollow">${I.chat}${fl.ask}</a>
+      <a class="btn btn-line wide" href="tel:${PHONE_INTL}">${I.phone}${fl.call} ${PHONE_INTL}</a>
+      <p class="u-hint">${fl.hint(esc(x.id))}</p>
+    </div></aside>
+  </div>
+</article>
+${similar.length ? `<section class="listing wrap"><h2>${fl.similar(esc(v.t))}</h2><div class="grid">${similar.map(c => langCard(c, lc)).join('')}</div><p class="center"><a class="btn btn-line" href="/${lc}/#danh-sach">${fl.back}</a></p></section>` : ''}`;
+  const ld = {
+    '@context': 'https://schema.org', '@type': 'RealEstateListing', name: title, url: SITE + url, description: descr, inLanguage: HREFLANG[lc],
+    ...(x.updated ? { datePosted: x.updated } : {}), ...(imgs.length ? { image: imgs.slice(0, 6) } : {}),
+    offers: { '@type': 'Offer', ...(x.price ? { price: x.price } : {}), priceCurrency: 'VND', businessFunction: 'http://purl.org/goodrelations/v1#LeaseOut', availability: 'https://schema.org/InStock', seller: { '@id': SITE + '/#agent' } },
+    about: { '@type': 'Apartment', name: title, ...(x.type !== 'Duplex' ? { numberOfBedrooms: Number(x.type[0]), numberOfRooms: Number(x.type[0]) } : {}), ...(x.area ? { floorSize: { '@type': 'QuantitativeValue', value: x.area, unitCode: 'MTK' } } : {}), containedInPlace: { '@id': SITE + '/#lumi' }, address: COMPLEX.address },
+  };
+  return layout({ lang: lc, title: fl.unitSeo(v.t, x.tower, x.area, v.p, x.id), desc: fl.unitDesc(x, v.t, x.intKey ? v.i : '', v.d, v.p, PHONE_FMT), canonical: url, body, alt: unitAlt(x), ogImage: imgs[0], jsonld: [ORG, bc.ld, ld] });
 }
 const redirect = to => `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Đã chuyển trang</title><link rel="canonical" href="${SITE}${to}"><meta name="robots" content="noindex, follow"><meta http-equiv="refresh" content="0; url=${to}"></head><body><p>Trang đã chuyển tới <a href="${to}">${SITE}${to}</a>.</p><script>location.replace(${JSON.stringify(to)}+location.search+location.hash)</script></body></html>`;
 
@@ -740,7 +834,10 @@ write('xung-quanh-lumi-ha-noi/index.html', areaPage()); add('/xung-quanh-lumi-ha
 write('so-sanh-can-1pn-2pn-3pn-lumi/index.html', comparePage(all)); add('/so-sanh-can-1pn-2pn-3pn-lumi/', TODAY, '0.7');
 write('lien-he/index.html', contactPage()); add('/lien-he/', TODAY, '0.5');
 write('feed.xml', feed(all));
-write('en/index.html', enPage(all)); add('/en/', TODAY, '0.8');
+for (const lc of FOREIGN) {
+  write(`${lc}/index.html`, langHome(all, lc)); add(`/${lc}/`, TODAY, '0.8');
+  for (const x of rent) { write(langUnitUrl(x, lc).slice(1) + 'index.html', langUnit(x, all, lc)); add(langUnitUrl(x, lc), x.updated || TODAY, '0.5', x.imgs.slice(0, 5)); }
+}
 write('da-luu/index.html', savedPage());
 write('can-ho/xem/index.html', layout({ title: `Căn hộ Lumi Hà Nội mới cập nhật | ${BRAND}`, desc: 'Căn hộ vừa thêm vào bảng hàng Lumi Hà Nội.', canonical: '/can-ho/xem/', noindex: true, body: `<article class="unit wrap" id="dyn-unit"><p class="u-hint">Đang tải thông tin căn…</p></article>` }));
 
@@ -758,9 +855,10 @@ write('404.html', layout({ title: `Không tìm thấy trang | ${BRAND}`, desc: '
 
 const smUrl = ({ u, lastmod, pri, images }) => `<url><loc>${SITE}${u}</loc><lastmod>${lastmod}</lastmod><priority>${pri}</priority>${images.map(i => `<image:image><image:loc>${esc(i)}</image:loc></image:image>`).join('')}</url>`;
 const SM_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n';
-write('sitemap-trang.xml', SM_HEAD + urls.filter(x => !x.u.startsWith('/can-ho/')).map(smUrl).join('\n') + '\n</urlset>\n');
+write('sitemap-trang.xml', SM_HEAD + urls.filter(x => !x.u.startsWith('/can-ho/') && !/^\/(en|ko|zh|ja)\/apartment\//.test(x.u)).map(smUrl).join('\n') + '\n</urlset>\n');
 write('sitemap-can-ho.xml', SM_HEAD + urls.filter(x => x.u.startsWith('/can-ho/')).map(smUrl).join('\n') + '\n</urlset>\n');
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n<sitemap><loc>${SITE}/sitemap-trang.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n<sitemap><loc>${SITE}/sitemap-can-ho.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n</sitemapindex>\n`);
+write('sitemap-ngoai-ngu.xml', SM_HEAD + urls.filter(x => /^\/(en|ko|zh|ja)\/apartment\//.test(x.u)).map(smUrl).join('\n') + '\n</urlset>\n');
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n<sitemap><loc>${SITE}/sitemap-trang.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n<sitemap><loc>${SITE}/sitemap-can-ho.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n<sitemap><loc>${SITE}/sitemap-ngoai-ngu.xml</loc><lastmod>${TODAY}</lastmod></sitemap>\n</sitemapindex>\n`);
 write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /da-luu/\nDisallow: /can-ho/xem/\nDisallow: /data/\n\nSitemap: ${SITE}/sitemap.xml\n`);
 const st = stat(rent);
 write('llms.txt', `# ${BRAND} (canholumi.com)\n\n> Danh sách căn hộ cho thuê và mua bán tại dự án Lumi Hà Nội (Lumi Hanoi, CapitaLand Development), Đại lộ Thăng Long, Hà Nội. Dữ liệu lấy từ bảng hàng, tự cập nhật. Liên hệ xem nhà: Zalo/điện thoại ${PHONE}.\n\n## Giá thuê hiện tại (${TODAY})\n${Object.keys(TYPES).map(k => [k, stat(rent.filter(x => x.type === k))]).filter(([, s]) => s.n).map(([k, s]) => `- ${TYPES[k].short}: ${s.n} căn, ${tr(s.min)}–${tr(s.max)} triệu/tháng, trung vị ${tr(s.med)} triệu`).join('\n')}\n- Tổng: ${st.n} căn cho thuê, ${sale.length} căn bán\n\n## Trang chính\n- [Căn hộ cho thuê](${SITE}/)\n- [Bảng giá thuê ${MONTH_LABEL}](${SITE}/bang-gia-thue-lumi-ha-noi/)\n- [Kinh nghiệm thuê căn hộ Lumi](${SITE}/kinh-nghiem-thue-can-ho-lumi/)\n- [Tiện ích Lumi Hà Nội](${SITE}/tien-ich-lumi-ha-noi/)\n${pages.filter(p => p.kind === 'type' || p.kind === 'tower').map(p => `- [${p.label}](${SITE}${p.url})`).join('\n')}\n- [Mua bán](${SITE}/mua-ban/)\n- [English](${SITE}/en/)\n`);
