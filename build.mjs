@@ -141,7 +141,9 @@ const I = {
 const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${Object.entries(I).map(([k, v]) => v.replace('<svg viewBox="0 0 24 24" aria-hidden="true">', `<symbol id="i-${k}" viewBox="0 0 24 24">`).replace('</svg>', '</symbol>')).join('')}</svg>`;
 for (const k of Object.keys(I)) I[k] = `<svg class="ic ic-${k}" aria-hidden="true"><use href="#i-${k}"/></svg>`;
 const logoSvg = () => `<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="10" width="7" height="19" rx="1"/><rect x="12.5" y="3" width="7" height="26" rx="1"/><rect x="22" y="13" width="7" height="16" rx="1"/><rect class="lit" x="14.5" y="7" width="3" height="3"/><rect class="lit" x="5" y="17" width="3" height="3"/><rect class="lit" x="24" y="21" width="3" height="3"/></svg>`;
-const NAV = [['/', 'Cho thuê'], ['/cac-toa/', 'Theo tòa'], ['/bang-gia-thue-lumi-ha-noi/', 'Bảng giá'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm'], ['/mua-ban/', 'Mua bán'], ['/chu-nha-ky-gui/', 'Ký gửi']];
+const NAV = [['/', 'Cho thuê'], ['/mua-ban/', 'Mua bán'], ['/cac-toa/', 'Theo tòa'], ['/bang-gia-thue-lumi-ha-noi/', 'Bảng giá'], ['/tien-ich-lumi-ha-noi/', 'Tiện ích'], ['/kinh-nghiem-thue-can-ho-lumi/', 'Kinh nghiệm'], ['/chu-nha-ky-gui/', 'Ký gửi']];
+// Nút chuyển Cho thuê / Mua bán hiện ngay trên trang (chỉ màn hình nhỏ, khi menu chính bị thu gọn).
+const modeTabs = (cur, nRent, nSale) => `<nav class="mode-tabs" aria-label="Cho thuê hoặc mua bán"><a href="/"${cur === 'rent' ? ' aria-current="page"' : ''}>Cho thuê${nRent ? ` <small>${nRent}</small>` : ''}</a><a href="/mua-ban/"${cur === 'sale' ? ' aria-current="page"' : ''}>Mua bán${nSale ? ` <small>${nSale}</small>` : ''}</a></nav>`;
 
 let FOOT_LINKS = '';
 let QUICK = () => '';
@@ -321,7 +323,7 @@ function listPage({ list, scope, h1, crumbs, canonical, title, desc, what, relat
   const sorted = sortUnits(list);
   const hp = photo(heroPhoto || 'ho-boi-ngoai-troi-lumi-signature');
   const body = `<section class="page-hero has-photo">${pic(hp, { sizes: '(max-width: 700px) 180px, 100vw', cls: 'ph-bg', eager: true, alt: '' })}
-<div class="wrap">${bc.html}<h1>${esc(h1)}</h1><p class="lead">${introText(list, what, sale)}</p><p class="byline">Cập nhật ${DATE_LABEL} · tự đồng bộ với bảng hàng</p></div></section>
+<div class="wrap">${bc.html}${sale ? modeTabs('sale', 0, list.length) : ''}<h1>${esc(h1)}</h1><p class="lead">${introText(list, what, sale)}</p><p class="byline">Cập nhật ${DATE_LABEL} · tự đồng bộ với bảng hàng</p></div></section>
 ${related.length ? `<nav class="rel wrap" aria-label="Trang liên quan"><span>Xem thêm:</span>${related.map(([u, l]) => `<a href="${u}">${esc(l)}</a>`).join('')}</nav>` : ''}
 <section class="listing wrap" id="danh-sach">${filters(list, { ...filterOpts, sale })}${grid(sorted, scope, sale)}</section>
 ${extra}${faq.length ? faqHtml(faq) : ''}`;
@@ -391,6 +393,7 @@ function homePage(all, meta) {
 <section class="hero">
   <img class="hero-bg" src="/img/lumi/hero-lumi-1080.webp" srcset="/img/lumi/hero-lumi-640.webp 640w, /img/lumi/hero-lumi-1080.webp 1080w, /img/lumi/hero-lumi-1600.webp 1600w" sizes="100vw" alt="" width="1600" height="1200" fetchpriority="high" decoding="async">
   <div class="hero-in wrap">
+    ${modeTabs('rent', 0, all.filter(x => !x.isRent).length)}
     <p class="hero-kicker"><span class="dot" aria-hidden="true"></span><b data-count="rent">${rent.length} căn</b> đang trống · cập nhật <span data-live="time">${upd}</span></p>
     <h1>Cho thuê căn hộ Lumi Hà Nội</h1>
     <p class="hero-sub">Quỹ căn hộ chung cư Lumi Hanoi đang cho thuê, lấy thẳng từ bảng hàng, mỗi căn có mã riêng và giá rõ ràng. Chọn căn ưng ý, gửi mã qua Zalo để hẹn xem nhà.</p>
