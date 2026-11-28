@@ -404,3 +404,27 @@ document.addEventListener('click', e => {
   const m = location.pathname.match(/-(thue|ban)[a-z0-9]*-\d+\/$/i);
   window.gtag('event', ev, { trang: location.pathname, ma_can: m ? m[0].slice(1, -1) : '' });
 }, true);
+
+// Giao diện v3 (bản dùng thử): hàng số liệu, nhãn bật/tắt, hiện dần khi cuộn
+(() => {
+  const H = document.documentElement;
+  if (!H.classList.contains('v3')) return;
+  const run = () => {
+    const hero = document.querySelector('.hero');
+    if (hero && !document.querySelector('.v3-stats')) {
+      const cnt = (document.querySelector('[data-count="rent"]')?.textContent || '').replace(/\D/g, '');
+      const mins = [...document.querySelectorAll('.prices .pr-v')].map(e => parseFloat((e.textContent.split(/[–-]/)[0] || '').replace(',', '.'))).filter(n => n > 0);
+      const towers = Math.max(0, document.querySelectorAll('[data-g="tower"] input').length - 1);
+      const items = [[cnt || '–', 'căn đang trống'], [mins.length ? `${String(Math.min(...mins)).replace('.', ',')} triệu` : '–', 'giá thuê thấp nhất / tháng'], [towers ? `${towers} tòa` : '–', 'đang có căn cho thuê'], ['Trực tiếp', 'đồng bộ từ bảng hàng']];
+      const el = document.createElement('section'); el.className = 'wrap v3-stats'; el.setAttribute('aria-label', 'Tổng quan quỹ căn');
+      el.innerHTML = items.map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join('');
+      hero.insertAdjacentElement('afterend', el);
+    }
+    const bd = document.createElement('div'); bd.className = 'v3-badge'; bd.innerHTML = '<span>Bản dùng thử giao diện mới</span><a href="?v3=0">Về bản cũ</a>'; document.body.appendChild(bd);
+    if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('v3-in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+      document.querySelectorAll('.sec-head, .amen .bento, .steps li, .loc, .guides .g-card, .v3-stats div').forEach(el => { el.classList.add('v3-rv'); io.observe(el); });
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
