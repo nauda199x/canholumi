@@ -279,7 +279,7 @@
     if (sc && total > grid.children.length) {
       const loadRest = () => getArchive().then(d => {
         const have = new Set([...grid.children].map(c => c.dataset.id));
-        const en = document.documentElement.lang === 'en';
+        const en = document.documentElement.lang !== 'vi';
         const html = (d.units || []).map(norm).filter(u => u && !u.goneAt && !have.has(u.id) && scopeOk(sc, u)).map(u => cardHtml(u)).join('');
         if (!en) grid.insertAdjacentHTML('beforeend', html);
         allIn = true; apply(false); paintSaved();
@@ -313,7 +313,7 @@
   let busy = false;
   const inScope = u => scopeOk(scope, u);
   const _unused = u => scope && !('rent' in scope && (scope.rent ? !u.isRent : u.isRent)) && (!scope.tower || u.tower === scope.tower) && (!scope.type || u.type === scope.type) && (!scope.int || u.intKey === scope.int) && (!scope.pmax || (u.price >= scope.pmin && u.price <= scope.pmax));
-  function setPrice(root, u) { const p = root.querySelector('[data-f="price"]'); if (p && p.textContent !== u.priceText && !document.documentElement.lang.startsWith('en')) { p.textContent = u.priceText; p.classList.add('changed'); } }
+  function setPrice(root, u) { const p = root.querySelector('[data-f="price"]'); if (p && p.textContent !== u.priceText && document.documentElement.lang === 'vi') { p.textContent = u.priceText; p.classList.add('changed'); } }
   async function sync() {
     if (busy || document.hidden) return; busy = true;
     try {
