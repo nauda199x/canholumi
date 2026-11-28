@@ -524,3 +524,10 @@ section{scroll-margin-top:calc(var(--top) + 8px)}
   .hero .mode-tabs{margin-top:-1.5rem}
   .page-hero .mode-tabs{margin-top:.8rem}
 }
+
+/* Dịch toàn bộ web bằng Google Dịch: ẩn thanh công cụ và khung gợi ý của Google */
+body>.skiptranslate,iframe.skiptranslate,.goog-te-banner-frame,#goog-gt-tt,.goog-te-balloon-frame,.VIpgJd-ZVi9od-ORHb-OEVmcd,.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,.VIpgJd-ZVi9od-xl07Ob-OEVmcd,#google_translate_element{display:none!important}
+html.is-tr body{top:0!important;position:static!important}
+.goog-text-highlight,font[style]{background:none!important;box-shadow:none!important}
+.nav .langs .lg[aria-current]{opacity:1;color:#fff;font-weight:700;border-color:var(--lamp)}
+html:not(.is-tr) .nav .langs .lg-vi{display:none}

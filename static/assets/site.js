@@ -5,6 +5,37 @@
   const num = (v, d) => Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d });
   const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
   const $ = (s, r = document) => r.querySelector(s);
+
+  // ---------- Dịch toàn bộ web (Google Dịch) ----------
+  // Bấm ngôn ngữ trên trang tiếng Việt → lưu cookie googtrans=/vi/<mã> → mọi trang tiếng Việt tự dịch, giữ nguyên khi chuyển trang.
+  // Vào trang ngoại ngữ (/en/ /ko/ /zh/ /ja/) cũng lưu lựa chọn đó. Bấm "Tiếng Việt" → xoá cookie, về tiếng Việt.
+  const PAGE_LANG = document.documentElement.dataset.lang || 'vi';
+  const GT = { en: 'en', ko: 'ko', zh: 'zh-CN', ja: 'ja' };
+  const GT_BACK = Object.fromEntries(Object.entries(GT).map(([k, v]) => [v, k]));
+  const trNow = () => { const m = /(?:^|;\s*)googtrans=\/vi\/([^;]+)/.exec(document.cookie); return m ? GT_BACK[decodeURIComponent(m[1])] || null : null; };
+  const setTr = l => {
+    const host = location.hostname.replace(/^www\./, '');
+    const v = l && GT[l] ? `/vi/${GT[l]}` : '';
+    const tail = v ? ';max-age=31536000' : ';expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    for (const d of ['', `;domain=${host}`, `;domain=.${host}`]) document.cookie = `googtrans=${v};path=/${d}${tail}`;
+  };
+  if (PAGE_LANG !== 'vi') { if (trNow() !== PAGE_LANG) setTr(PAGE_LANG); }
+  else {
+    const cur = trNow();
+    if (cur) {
+      document.documentElement.classList.add('is-tr');
+      const box = document.createElement('div'); box.id = 'google_translate_element'; box.hidden = true; document.body.appendChild(box);
+      window.googleTranslateElementInit = () => new google.translate.TranslateElement({ pageLanguage: 'vi', includedLanguages: Object.values(GT).join(','), autoDisplay: false }, 'google_translate_element');
+      const sc = document.createElement('script'); sc.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'; sc.async = true; document.head.appendChild(sc);
+    }
+    document.querySelectorAll('.langs .lg[data-tr]').forEach(a => { if (a.dataset.tr === (cur || 'vi')) a.setAttribute('aria-current', 'true'); });
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('.lg[data-tr]'); if (!a) return;
+    const l = a.dataset.tr;
+    if (l === 'vi') { setTr(null); if (PAGE_LANG === 'vi') { e.preventDefault(); location.reload(); } return; }
+    if (PAGE_LANG === 'vi') { e.preventDefault(); setTr(l); location.reload(); }
+  });
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
   const SVG = Object.fromEntries(['area', 'dir', 'sofa', 'heart'].map(k => [k, `<svg class="ic ic-${k}" aria-hidden="true"><use href="#i-${k}"/></svg>`]));
@@ -279,7 +310,7 @@
     if (sc && total > grid.children.length) {
       const loadRest = () => getArchive().then(d => {
         const have = new Set([...grid.children].map(c => c.dataset.id));
-        const en = document.documentElement.lang !== 'vi';
+        const en = PAGE_LANG !== 'vi';
         const html = (d.units || []).map(norm).filter(u => u && !u.goneAt && !have.has(u.id) && scopeOk(sc, u)).map(u => cardHtml(u)).join('');
         if (!en) grid.insertAdjacentHTML('beforeend', html);
         allIn = true; apply(false); paintSaved();
@@ -313,7 +344,7 @@
   let busy = false;
   const inScope = u => scopeOk(scope, u);
   const _unused = u => scope && !('rent' in scope && (scope.rent ? !u.isRent : u.isRent)) && (!scope.tower || u.tower === scope.tower) && (!scope.type || u.type === scope.type) && (!scope.int || u.intKey === scope.int) && (!scope.pmax || (u.price >= scope.pmin && u.price <= scope.pmax));
-  function setPrice(root, u) { const p = root.querySelector('[data-f="price"]'); if (p && p.textContent !== u.priceText && document.documentElement.lang === 'vi') { p.textContent = u.priceText; p.classList.add('changed'); } }
+  function setPrice(root, u) { const p = root.querySelector('[data-f="price"]'); if (p && p.textContent !== u.priceText && PAGE_LANG === 'vi') { p.textContent = u.priceText; p.classList.add('changed'); } }
   async function sync() {
     if (busy || document.hidden) return; busy = true;
     try {

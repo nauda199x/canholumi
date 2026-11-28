@@ -154,10 +154,13 @@ function layout({ title: rawTitle, desc, canonical, body, jsonld = [], ogImage, 
   const home = lang === 'vi' ? '/' : `/${lang}/`;
   // Nút đổi ngôn ngữ: dùng đúng trang tương ứng (alt) nếu có, không thì về trang chủ ngôn ngữ đó.
   const altMap = Object.fromEntries((alt || []).map(([l, u]) => [l, u]));
-  const langLinks = LANG_ORDER.filter(l => l !== lang).map(l => `<a class="lg" href="${altMap[HREFLANG[l]] || (l === 'vi' ? '/' : `/${l}/`)}" hreflang="${HREFLANG[l]}" lang="${HREFLANG[l]}">${LANG_LABEL[l]}</a>`).join('');
-  const navHtml = fl ? `<a href="${home}" aria-current="page">${fl.homeLink}</a>` : NAV.map(([h, l]) => `<a href="${h}"${active === h ? ' aria-current="page"' : ''}>${l}</a>`).join('');
+  // Trang tiếng Việt: bấm ngôn ngữ → dịch máy toàn bộ web (site.js đặt cookie googtrans); href vẫn trỏ trang ngoại ngữ cho máy tìm kiếm.
+  // Trang ngoại ngữ: bấm Tiếng Việt → bỏ dịch, về đúng trang tiếng Việt.
+  const langLinks = LANG_ORDER.filter(l => l !== lang).map(l => `<a class="lg" data-tr="${l}" href="${altMap[HREFLANG[l]] || (l === 'vi' ? '/' : `/${l}/`)}" hreflang="${HREFLANG[l]}" lang="${HREFLANG[l]}">${LANG_LABEL[l]}</a>`).join('');
+  const langCur = lang === 'vi' ? `<a class="lg lg-vi" data-tr="vi" href="${canonical}" hreflang="vi" lang="vi">${LANG_LABEL.vi}</a>` : '';
+  const navHtml = fl ? `<a href="${home}" aria-current="page">${fl.homeLink}</a>` + NAV.slice(1).map(([h], i) => `<a href="${h}">${fl.navMore[i]}</a>`).join('') : NAV.map(([h, l]) => `<a href="${h}"${active === h ? ' aria-current="page"' : ''}>${l}</a>`).join('');
   return `<!doctype html>
-<html lang="${fl ? fl.htmlLang : lang}">
+<html lang="${fl ? fl.htmlLang : lang}" data-lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -193,9 +196,9 @@ ${SPRITE}
 <a class="skip" href="#noi-dung">${fl ? fl.skip : 'Bỏ qua menu'}</a>
 <header class="top">
   <a class="logo" href="${home}" aria-label="${BRAND} – trang chủ"><img class="logo-img" src="/img/logo-lumi-trang.webp" alt="Lumi Hanoi – Căn Hộ Lumi" width="122" height="60"><span class="sr">Căn Hộ Lumi</span></a>
-  <nav class="nav" id="nav" aria-label="${fl ? fl.nav : 'Menu chính'}">${navHtml}<span class="langs" role="group" aria-label="${fl ? fl.langs : 'Ngôn ngữ'}">${langLinks}</span></nav>
+  <nav class="nav" id="nav" aria-label="${fl ? fl.nav : 'Menu chính'}">${navHtml}<span class="langs notranslate" translate="no" role="group" aria-label="${fl ? fl.langs : 'Ngôn ngữ'}">${langCur}${langLinks}</span></nav>
   ${fl ? '' : `<a class="saved-link" href="/da-luu/" aria-label="Căn đã lưu">${I.heart}<span class="saved-n" data-saved-count hidden>0</span></a>`}
-  <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow" aria-label="${fl ? fl.zalo : 'Nhắn Zalo'} ${PHONE_FMT}">${I.chat}<span>Zalo ${PHONE_FMT}</span></a>
+  <a class="btn btn-zalo top-cta" href="${ZALO}" rel="nofollow" aria-label="${fl ? fl.zalo : 'Nhắn Zalo'} ${PHONE_FMT}">${I.chat}<span class="notranslate" translate="no">Zalo ${PHONE_FMT}</span></a>
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="nav" aria-label="${fl ? fl.nav : 'Mở menu'}"><span></span><span></span><span></span></button>
 </header>
 <main id="noi-dung">
