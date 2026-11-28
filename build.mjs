@@ -110,7 +110,6 @@ const score = u => (u.real ? 2 : 0) + (u.img.length ? 1 : 0);
 const sortUnits = list => [...list].sort((a, b) => score(b) - score(a) || (b.updated || '').localeCompare(a.updated || '') || a.price - b.price);
 
 // ---------- Khung trang ----------
-const V3_VER = fs.existsSync('static/assets/v3.css') ? sha(fs.readFileSync('static/assets/v3.css', 'utf8')).slice(0, 8) : '0';
 const ASSET_VER = sha(fs.readFileSync('static/assets/site.js', 'utf8')).slice(0, 8);
 const minCss = c => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s*\n\s*/g, '').replace(/\s*([{}:;,>])\s*/g, '$1').replace(/;}/g, '}');
 const INLINE_CSS = minCss(fs.readFileSync('static/assets/fonts.css', 'utf8') + fs.readFileSync('static/assets/site.css', 'utf8'));
@@ -164,7 +163,6 @@ function layout({ title: rawTitle, desc, canonical, body, jsonld = [], ogImage, 
 <html lang="${fl ? fl.htmlLang : lang}" data-lang="${lang}">
 <head>
 <meta charset="utf-8">
-<script>try{var q=location.search;if(/[?&]v3=1/.test(q))localStorage.setItem("v3","1");if(/[?&]v3=0/.test(q))localStorage.removeItem("v3");if(localStorage.getItem("v3")==="1"){document.documentElement.classList.add("v3");document.write('<link rel="stylesheet" href="/assets/v3.css?v=${V3_VER}">')}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(D(desc))}">
@@ -877,5 +875,5 @@ write('data/id-url.json', JSON.stringify(Object.fromEntries(all.map(x => [String
 write('data/urls.txt', urls.map(x => SITE + x.u).join('\n') + '\n');
 fs.writeFileSync(path.join(OUT, 'CNAME'), 'canholumi.com\n');
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
-fs.writeFileSync(path.join(OUT, 'data-hash.txt'), sha(JSON.stringify(cur) + ASSET_VER + V3_VER + GA_ID + fs.readFileSync('build.mjs', 'utf8') + JSON.stringify(gone.map(g => g.id))) + '\n');
+fs.writeFileSync(path.join(OUT, 'data-hash.txt'), sha(JSON.stringify(cur) + ASSET_VER + GA_ID + fs.readFileSync('build.mjs', 'utf8') + JSON.stringify(gone.map(g => g.id))) + '\n');
 console.log(`OK: ${all.length} căn (${rent.length} thuê, ${sale.length} bán), ${goneUnits.length} căn đã gỡ lưu trữ, ${pages.length} trang danh sách, ${urls.length} URL trong sitemap`);
